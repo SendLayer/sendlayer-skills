@@ -1,0 +1,95 @@
+{
+  "skill_name": "sendlayer-cli",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Install the SendLayer CLI.",
+      "expected_output": "Agent must state that the CLI is not published yet — npm sendlayer-cli 404s, there is no install.sh and no Homebrew tap — and offer the SDKs, curl, or the MCP server instead. It must not emit an install command that fails.",
+      "files": [],
+      "expectations": [
+        "Does not instruct the user to run npm install -g sendlayer-cli",
+        "Does not reference https://sendlayer.com/install.sh or a Homebrew tap as working",
+        "States clearly that the CLI is unreleased",
+        "Offers a working alternative (SDK, curl, or MCP)"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Use the SendLayer CLI to tail webhook events while I develop locally.",
+      "expected_output": "Routes to sendlayer webhooks listen, and makes clear that --public-url is required and the user must run their own tunnel (ngrok/cloudflared) — the CLI does not create one.",
+      "files": [],
+      "expectations": [
+        "Uses sendlayer webhooks listen, not a polling loop over events list",
+        "States that --public-url is required",
+        "Instructs the user to start their own tunnel",
+        "Does not imply the CLI opens a tunnel itself"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Send a SendLayer CLI email to alice@example.com and bob@example.com.",
+      "expected_output": "Uses a single comma-separated --to value, because --to is not repeatable. Repeating the flag would silently drop the first recipient.",
+      "files": [],
+      "expectations": [
+        "Uses one --to flag with comma-separated addresses",
+        "Does not pass --to twice",
+        "Includes the required --from and --subject and a body flag"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Add a custom header X-Order-Id with value 12345 to a SendLayer CLI send.",
+      "expected_output": "Uses --header \"X-Order-Id=12345\" with an equals sign. A colon separator is a validation error.",
+      "files": [],
+      "expectations": [
+        "Uses Key=Value form with an equals sign",
+        "Does not use a colon separator"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Write a shell script that fails CI if there were more than 10 SendLayer delivery failures.",
+      "expected_output": "Uses events list --event failed with --json and jq on TotalRecords. Should use the history vocabulary 'failed' and know --limit maxes at 100.",
+      "files": [],
+      "expectations": [
+        "Uses --event failed, not 'bounce' or 'bounced'",
+        "Uses --json and parses TotalRecords",
+        "Does not pass --limit above 100",
+        "Uses SENDLAYER_API_KEY rather than sendlayer login in CI"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "My SendLayer CLI command exited with code 2. Is my API key wrong?",
+      "expected_output": "No — 2 is a usage error. Auth failures are 3 (missing) and 4 (invalid). Agent should correct the assumption rather than debugging the key.",
+      "files": [],
+      "expectations": [
+        "States that 2 means usage error, not auth",
+        "Identifies 3 as auth missing and 4 as auth invalid",
+        "Does not send the user to check their API key as the primary fix"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Set up SendLayer CLI authentication in a GitHub Actions workflow.",
+      "expected_output": "Uses the SENDLAYER_API_KEY environment variable from secrets, and explicitly avoids sendlayer login, which writes a key to the runner's disk.",
+      "files": [],
+      "expectations": [
+        "Uses SENDLAYER_API_KEY from GitHub secrets",
+        "Does not run sendlayer login in CI",
+        "Notes that JSON output is automatic when stdout is not a TTY"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Create a SendLayer webhook via the CLI for when emails are opened.",
+      "expected_output": "Uses --event open (subscription vocabulary), not 'opened'. Should note the received payload will say 'opened'.",
+      "files": [],
+      "expectations": [
+        "Uses --event open",
+        "Does not use --event opened",
+        "May note the payload contains 'opened'"
+      ]
+    }
+  ]
+}

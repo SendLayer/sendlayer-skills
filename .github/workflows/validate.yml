@@ -1,0 +1,140 @@
+name: Validate skills
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: Frontmatter, structure, links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Validate SKILL.md against the Agent Skills spec
+        run: |
+          for skill in skills/*/; do
+            echo "::group::$skill"
+            npx --yes skills-ref validate "./$skill"
+            echo "::endgroup::"
+          done
+
+      - name: Check SKILL.md size limits
+        run: |
+          fail=0
+          for f in skills/*/SKILL.md; do
+            lines=$(wc -l < "$f")
+            if [ "$lines" -gt 500 ]; then
+              echo "::error file=$f::$f is $lines lines; the spec recommends under 500"
+              fail=1
+            else
+              echo "$f: $lines lines"
+            fi
+          done
+          exit $fail
+
+      - name: Check skill name matches directory name
+        run: |
+          fail=0
+          for f in skills/*/SKILL.md; do
+            dir=$(basename "$(dirname "$f")")
+            name=$(awk '/^name:/{print $2; exit}' "$f")
+            if [ "$dir" != "$name" ]; then
+              echo "::error file=$f::name '$name' does not match directory '$dir'"
+              fail=1
+            fi
+          done
+          exit $fail
+
+      - name: Check references are one level deep and resolve
+        run: |
+          fail=0
+          for f in skills/*/SKILL.md skills/*/references/*.md; do
+            dir=$(dirname "$f")
+            # extract relative markdown link targets, ignoring anchors and URLs
+            grep -oE '\]\(([^)]+\.md)\)' "$f" 2>/dev/null | sed -E 's/^\]\(//; s/\)$//' | while read -r target; do
+              case "$target" in
+                http*) continue ;;
+              esac
+              if [ ! -f "$dir/$target" ]; then
+                echo "::error file=$f::broken link to $target"
+                exit 1
+              fi
+              # references/ must not point into a deeper references dir
+              if [ "$(dirname "$f")" != "${dir%/references}" ] && echo "$target" | grep -q 'references/.*/'; then
+                echo "::error file=$f::reference nested more than one level: $target"
+                exit 1
+              fi
+            done || fail=1
+          done
+          exit $fail
+
+      - name: Set up language runtimes for snippet checks
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+
+      - name: Parse-check every code snippet
+        run: node scripts/check-snippets.mjs
+
+      - name: Validate eval JSON
+        run: |
+          for f in skill-evals/*/evals.json; do
+            node -e "
+              const d = require('./$f');
+              if (!d.skill_name) throw new Error('$f: missing skill_name');
+              if (!Array.isArray(d.evals) || !d.evals.length) throw new Error('$f: no evals');
+              for (const e of d.evals) {
+                for (const k of ['id', 'prompt', 'expected_output', 'expectations']) {
+                  if (!(k in e)) throw new Error('$f: eval ' + e.id + ' missing ' + k);
+                }
+              }
+              console.log('$f: ' + d.evals.length + ' evals OK');
+            "
+          done
+
+      - name: Validate plugin manifests
+        run: |
+          for f in .claude-plugin/plugin.json .claude-plugin/marketplace.json \
+                   .cursor-plugin/plugin.json .cursor-plugin/marketplace.json \
+                   .codex-plugin/plugin.json .mcp.json; do
+            node -e "require('./$f'); console.log('$f: valid JSON')"
+          done
+
+      - name: Check every skill has evals
+        run: |
+          fail=0
+          for skill in skills/*/; do
+            name=$(basename "$skill")
+            if [ ! -f "skill-evals/$name/evals.json" ]; then
+              echo "::error::skills/$name has no skill-evals/$name/evals.json"
+              fail=1
+            fi
+          done
+          exit $fail
+
+  links:
+    name: External links
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      # Catches install channels that are documented but not actually live —
+      # the reason the CLI skill carries an availability warning.
+      - name: Check external URLs
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            --no-progress
+            --accept 200,206,400,401,403,405
+            --exclude-path node_modules
+            --timeout 20
+            './**/*.md'
+          fail: true

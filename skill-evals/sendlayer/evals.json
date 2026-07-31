@@ -1,0 +1,147 @@
+{
+  "skill_name": "sendlayer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Set up a SendLayer webhook so my app gets notified when emails are delivered.",
+      "expected_output": "Agent uses event name 'delivery' (not 'delivered') for Webhooks.create, and loads references/webhooks.md. Should also flag that the payload will contain 'delivered', not 'delivery'.",
+      "files": [],
+      "expectations": [
+        "Uses 'delivery' as the Webhooks.create event value",
+        "Does not use 'delivered', 'delivery_success', or any invented name",
+        "Mentions that the received payload's EventData.Event is 'delivered'",
+        "References references/webhooks.md"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Write a handler for my SendLayer webhook that suppresses addresses when they bounce.",
+      "expected_output": "Handler reads the payload at event.body.EventData, matches EventData.Event === 'bounced' (past tense), and reads the address from BouncedEmailAddress.EmailAddress rather than a top-level To field.",
+      "files": [],
+      "expectations": [
+        "Accesses the payload at req.body.event.body.EventData, not req.body.EventData",
+        "Compares against 'bounced', not 'bounce'",
+        "Reads the address from BouncedEmailAddress.EmailAddress",
+        "Does not read data.To for the bounced address",
+        "Responds 2xx before doing slow work"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Send an email with SendLayer in Python.",
+      "expected_output": "Uses sendlayer.Emails.send(sender=...), not from=. Reads the key from the environment. Accesses response['MessageID'].",
+      "files": [],
+      "expectations": [
+        "Uses the sender= keyword argument",
+        "Does not attempt from= (a Python SyntaxError)",
+        "Reads the API key from an environment variable rather than hardcoding",
+        "Accesses the response as response['MessageID'], PascalCase"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "I want to send an HTML email with a plain-text fallback using the SendLayer Node SDK.",
+      "expected_output": "Agent must state that the SDK cannot send a true multipart message — passing html silently discards text — rather than writing code that appears to do it. Should offer the alternatives (well-degrading HTML, or raw REST with verification).",
+      "files": [],
+      "expectations": [
+        "States explicitly that text is dropped when html is set",
+        "Does not present send({html, text}) as producing a multipart email",
+        "Offers a concrete alternative rather than only refusing",
+        "Does not invent a multipart or contentType parameter"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "List my SendLayer webhooks and delete the first one.",
+      "expected_output": "Casts WebhookID from string to integer before calling delete(), because Webhooks.get() returns it as a string and delete() validates for an integer.",
+      "files": [],
+      "expectations": [
+        "Casts WebhookID to a number/int before delete",
+        "Notes or handles that WebhookID comes back as a string",
+        "Uses the correct per-language unwrapping (Node returns the array directly; Python/PHP/Ruby need ['Webhooks'])"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Attach the invoice PDF from https://cdn.example.com/invoices/12345.pdf to a SendLayer email.",
+      "expected_output": "Passes the URL directly as attachments[].path and lets the SDK fetch and encode it. Does not download and base64-encode manually.",
+      "files": [],
+      "expectations": [
+        "Passes the URL as the path field",
+        "Does not manually fetch and base64-encode the file",
+        "Sets the type field",
+        "Mentions the attachmentURLTimeout / fetch-failure implication"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Filter my SendLayer events to only those sent to alice@example.com, using the Node SDK.",
+      "expected_output": "Agent must recognise that fromEmail/toEmail exist in the Node GetEventsOptions type but are never sent, so address filtering does not work in Node. Should offer client-side filtering or the REST API.",
+      "files": [],
+      "expectations": [
+        "States that toEmail is not actually sent by the Node SDK",
+        "Does not present Events.get({toEmail}) as working",
+        "Offers client-side filtering on Message.Headers.To or a direct REST call"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "My SendLayer sends are failing with error code 32. What's wrong?",
+      "expected_output": "Identifies code 32 as 'Domain is not activated' and directs the user to verify their sending domain. Should not suggest retrying.",
+      "files": [],
+      "expectations": [
+        "Identifies code 32 as an unverified/unactivated sending domain",
+        "Points to domain authorization",
+        "Does not suggest retry logic as a fix",
+        "May reference references/error-codes.md"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "Add SendLayer to my Laravel app so I can use Mail::send().",
+      "expected_output": "Agent must state that there is no published Laravel package or Symfony Mailer transport for SendLayer, and must not instruct the user to composer require sendlayer/sendlayer-laravel. Should offer the PHP SDK behind a service binding instead, while being clear it does not make Mail::send() work.",
+      "files": [],
+      "expectations": [
+        "Does not tell the user to install sendlayer/sendlayer-laravel or sendlayer/sendlayer-mailer",
+        "States that no published Laravel/Symfony integration exists",
+        "Offers the PHP SDK as the working alternative",
+        "Is clear that the SDK approach does not wire up Mail::send()"
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "Set up a retry loop around my SendLayer send so transient failures get retried automatically.",
+      "expected_output": "Agent should warn that SendLayer has no idempotency key, so blind retries can double-send, and should scope retries to rate limits/5xx only rather than wrapping every failure.",
+      "files": [],
+      "expectations": [
+        "Mentions the absence of an idempotency key",
+        "Warns that a retry after a timeout may double-send",
+        "Scopes retries to specific error classes rather than all failures",
+        "Does not produce an unconditional retry wrapper"
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "I need to send emails from Rust. What SDK should I use?",
+      "expected_output": "There is no official Rust SDK. Agent should route to the REST API reference rather than inventing a crate name.",
+      "files": [],
+      "expectations": [
+        "States that no official Rust SDK exists",
+        "Does not invent or suggest an unofficial crate as if official",
+        "Routes to references/curl.md or the REST payload shape",
+        "Gets the base URL right: https://console.sendlayer.com/api/v1/"
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "Show me the last 500 SendLayer delivery events.",
+      "expected_output": "retrieveCount maxes out at 100, so the agent must paginate with startFrom — and must note that the Node SDK cannot do this, requiring PHP/Python/Ruby/Go or raw REST.",
+      "files": [],
+      "expectations": [
+        "Does not pass retrieveCount: 500",
+        "Recognises the 1-100 limit",
+        "Uses startFrom to paginate, or explains that Node cannot and offers an alternative"
+      ]
+    }
+  ]
+}

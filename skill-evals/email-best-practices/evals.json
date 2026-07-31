@@ -1,0 +1,125 @@
+{
+  "skill_name": "email-best-practices",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "My emails are going to spam. How do I fix it?",
+      "expected_output": "Agent works through the diagnostic order: authentication first (SPF/DKIM/DMARC actually passing), then whether it was delivered at all, then suppression, then domain age, and only then content. It should not lead with subject-line or content advice.",
+      "files": [],
+      "expectations": [
+        "Checks SPF/DKIM/DMARC before discussing content",
+        "Distinguishes 'delivered' (server accepted) from 'in the inbox'",
+        "Does not lead with subject-line or spam-word advice",
+        "References references/deliverability.md or domain-authentication.md"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Should I send my abandoned cart emails from the same domain as my password resets?",
+      "expected_output": "No. Abandoned cart is marketing; password resets are transactional. They belong on separate subdomains so marketing complaints cannot degrade delivery of password resets.",
+      "files": [],
+      "expectations": [
+        "Classifies abandoned cart as marketing, not transactional",
+        "Recommends separate subdomains",
+        "Explains the reputation-isolation reason",
+        "Notes abandoned cart requires opt-in and an unsubscribe link"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Add a promotional banner with a discount code to our order confirmation emails.",
+      "expected_output": "Agent should flag that mixing promotional content into a transactional message can make the whole message commercial under CAN-SPAM, forcing an unsubscribe option onto receipts, and risks spam complaints against the transactional stream. Should recommend a separate send.",
+      "files": [],
+      "expectations": [
+        "Warns against mixing promotional content into transactional email",
+        "Explains the CAN-SPAM / unsubscribe consequence",
+        "Explains the reputation risk to the transactional stream",
+        "Recommends a separate marketing send to opted-in recipients"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Implement one-click unsubscribe for our newsletter.",
+      "expected_output": "Sets both List-Unsubscribe and List-Unsubscribe-Post headers, with an endpoint that accepts POST with no auth and no confirmation page, and keeps the visible in-body link as well. Suppression must be scoped to marketing only.",
+      "files": [],
+      "expectations": [
+        "Sets both List-Unsubscribe and List-Unsubscribe-Post",
+        "Endpoint accepts POST without authentication or a confirmation step",
+        "Keeps a visible unsubscribe link in the body as well",
+        "Scopes the suppression to marketing, not all mail",
+        "Does not send a confirmation email after unsubscribe"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "We just bought a list of 50,000 leads. What's the best way to email them?",
+      "expected_output": "Agent should decline to help send to a purchased list, explaining spam traps, complaint rates, and lack of consent under GDPR/CASL, and redirect to building a consented list. It should not optimize the sending of a purchased list.",
+      "files": [],
+      "expectations": [
+        "Advises against sending to a purchased list",
+        "Cites spam traps and complaint rates",
+        "Notes the consent problem under GDPR/CASL",
+        "Does not provide warm-up or throttling tactics to make the purchased-list send work"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Build an HTML email template for our receipts.",
+      "expected_output": "Table-based, 600px, inline styles, preheader, alt text on images, absolute URLs. Should mention Outlook and dark mode. Should note the SendLayer plain-text limitation rather than claiming a text fallback.",
+      "files": [],
+      "expectations": [
+        "Uses table-based layout with inline styles, not flexbox or grid",
+        "Constrains width to around 600px",
+        "Includes a preheader",
+        "Sets alt/width/height on images",
+        "Does not claim a plain-text alternative is being sent"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "We're launching a new sending domain next week and need to send 40,000 emails on day one.",
+      "expected_output": "Agent should warn that a cold domain has no reputation and will be filtered, and lay out a warm-up ramp starting at 50-100/day to the most engaged recipients.",
+      "files": [],
+      "expectations": [
+        "Warns against sending high volume from a cold domain",
+        "Provides a graduated warm-up schedule",
+        "Recommends starting with the most engaged recipients",
+        "Confirms authentication must be in place first"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Someone unsubscribed from our newsletter. Should we stop sending them order confirmations too?",
+      "expected_output": "No. A marketing unsubscribe must be scoped to marketing; transactional mail continues. Only hard bounces and spam complaints should block everything.",
+      "files": [],
+      "expectations": [
+        "States that transactional email should continue",
+        "Scopes the unsubscribe to marketing only",
+        "Distinguishes this from hard bounces and complaints, which block all mail"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "How do I test our new email template before sending it to our list?",
+      "expected_output": "Layered: unit tests on the payload, seed inboxes across clients, images-blocked and dark-mode checks, Outlook on Windows, mail-tester score, and verifying the unsubscribe endpoint. Should warn that testing against your own Gmail proves nothing about deliverability.",
+      "files": [],
+      "expectations": [
+        "Recommends seed inboxes across multiple clients including Outlook Windows",
+        "Includes an images-blocked and/or dark-mode check",
+        "Notes that self-sending to your own Gmail is not a deliverability test",
+        "Includes verifying the unsubscribe link/endpoint"
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "Our complaint rate is 0.25%. Is that OK?",
+      "expected_output": "No — it is close to Gmail's 0.3% enforcement threshold and well above the 0.1% target. Agent should treat this as urgent and diagnose list quality and consent.",
+      "files": [],
+      "expectations": [
+        "Identifies 0.25% as dangerously high, not acceptable",
+        "Cites the 0.3% Gmail threshold and a 0.1% target",
+        "Recommends concrete remediation such as pruning inactive recipients and auditing consent"
+      ]
+    }
+  ]
+}

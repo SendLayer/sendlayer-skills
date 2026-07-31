@@ -1,0 +1,9 @@
+node_modules/
+.DS_Store
+*.log
+.env
+.env.*
+!.env.example
+
+# Local-only maintainer notes (not for the public repo)
+PUBLISHING.md

@@ -1,0 +1,30 @@
+{
+  "name": "sendlayer-skills",
+  "metadata": {
+    "description": "SendLayer email skills for Claude Code"
+  },
+  "owner": {
+    "name": "SendLayer",
+    "email": "support@sendlayer.com",
+    "url": "https://sendlayer.com"
+  },
+  "plugins": [
+    {
+      "name": "sendlayer",
+      "description": "Send transactional email, track delivery events, manage webhooks, and follow deliverability best practices with SendLayer",
+      "source": "./",
+      "category": "developer-tools",
+      "homepage": "https://sendlayer.com",
+      "tags": [
+        "email",
+        "transactional-email",
+        "deliverability",
+        "webhooks",
+        "mcp",
+        "smtp",
+        "notifications",
+        "cli"
+      ]
+    }
+  ]
+}

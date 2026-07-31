@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "sendlayer",
+  "description": "Send transactional email, track delivery events, and manage webhooks with SendLayer — across Node.js, Python, PHP, Ruby, Go, the CLI, and the REST API. Includes the SendLayer MCP server.",
+  "version": "1.0.0",
+  "logo": "assets/app-icon.svg",
+  "author": {
+    "name": "SendLayer",
+    "email": "support@sendlayer.com",
+    "url": "https://sendlayer.com"
+  },
+  "homepage": "https://sendlayer.com",
+  "repository": "https://github.com/SendLayer/sendlayer-skills",
+  "license": "MIT",
+  "keywords": [
+    "email",
+    "sendlayer",
+    "transactional-email",
+    "smtp",
+    "webhooks",
+    "deliverability",
+    "notifications"
+  ]
+}

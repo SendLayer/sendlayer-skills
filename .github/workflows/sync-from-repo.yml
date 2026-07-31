@@ -1,0 +1,106 @@
+name: Sync skill from source repo
+
+# Lets an SDK repo own its own skill and push updates here as a PR.
+# Nothing is synced today — every skill is authored in this repo. See AGENTS.md.
+#
+# Example dispatch:
+#   gh workflow run sync-from-repo.yml \
+#     -f repo=SendLayer/sendlayer-node \
+#     -f skill-path=skills/sendlayer-node \
+#     -f skill-name=sendlayer-node \
+#     -f sha=abc1234
+
+on:
+  workflow_dispatch:
+    inputs:
+      repo:
+        description: Source repo, e.g. SendLayer/sendlayer-node
+        required: true
+      skill-path:
+        description: Path to the skill directory inside the source repo
+        required: true
+      skill-name:
+        description: Destination name under skills/
+        required: true
+      sha:
+        description: Commit SHA in the source repo to sync from
+        required: true
+      reviewer:
+        description: GitHub username to request review from
+        required: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v4
+
+      - name: Checkout source repo at SHA
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.repo }}
+          ref: ${{ inputs.sha }}
+          path: source
+
+      - name: Verify the source skill exists
+        run: |
+          src="source/${{ inputs['skill-path'] }}"
+          if [ ! -f "$src/SKILL.md" ]; then
+            echo "::error::$src/SKILL.md not found in ${{ inputs.repo }}@${{ inputs.sha }}"
+            exit 1
+          fi
+
+      - name: Copy skill
+        id: copy
+        run: |
+          src="source/${{ inputs['skill-path'] }}"
+          dest="skills/${{ inputs['skill-name'] }}"
+
+          mkdir -p "$dest"
+          for item in SKILL.md references scripts assets; do
+            if [ -e "$src/$item" ]; then
+              rm -rf "$dest/$item"
+              cp -r "$src/$item" "$dest/$item"
+            fi
+          done
+
+          if git diff --quiet -- "$dest"; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No changes to sync."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check the synced skill still validates
+        if: steps.copy.outputs.changed == 'true'
+        run: |
+          npx --yes skills-ref validate "./skills/${{ inputs['skill-name'] }}"
+          lines=$(wc -l < "skills/${{ inputs['skill-name'] }}/SKILL.md")
+          [ "$lines" -le 500 ] || { echo "::error::SKILL.md is $lines lines"; exit 1; }
+
+      - name: Open pull request
+        if: steps.copy.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: sync/${{ inputs['skill-name'] }}-${{ inputs.sha }}
+          title: "sync: ${{ inputs['skill-name'] }} from ${{ inputs.repo }}@${{ inputs.sha }}"
+          body: |
+            Automated sync of `skills/${{ inputs['skill-name'] }}` from
+            [`${{ inputs.repo }}@${{ inputs.sha }}`](https://github.com/${{ inputs.repo }}/commit/${{ inputs.sha }}).
+
+            Source path: `${{ inputs['skill-path'] }}`
+
+            Do not edit this skill in this repo — changes here are overwritten on the next sync.
+            Edit it in `${{ inputs.repo }}` instead.
+
+            **Reviewer checklist**
+            - [ ] Every code snippet is runnable against the published SDK version
+            - [ ] No unpublished packages are referenced
+            - [ ] `metadata.version` was bumped in the source repo
+          reviewers: ${{ inputs.reviewer }}
+          add-paths: skills/${{ inputs['skill-name'] }}

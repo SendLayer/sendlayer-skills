@@ -1,0 +1,14 @@
+{
+  "name": "sendlayer-skills",
+  "owner": {
+    "name": "SendLayer",
+    "email": "support@sendlayer.com",
+    "url": "https://sendlayer.com"
+  },
+  "plugins": [
+    {
+      "name": "sendlayer",
+      "source": "./"
+    }
+  ]
+}
