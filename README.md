@@ -222,9 +222,6 @@ Each is `skills/<name>/SKILL.md` plus a `references/` directory loaded on demand
 | `github.com/sendlayer/sendlayer-go` | Go modules | v1.0.0 | yes |
 | REST API | — | v1 | yes |
 | `sendlayer-cli` | npm | unpublished | documented, marked pre-release |
-| `sendlayer/sendlayer-laravel` | — | unpublished | **no** |
-| `sendlayer/sendlayer-mailer` | — | unpublished | **no** |
-| `sendlayer/sendlayer-bundle` | — | not started | **no** |
 
 ## Contributing
 
