@@ -14,7 +14,7 @@ official SDKs for Node.js, Python, PHP, Ruby and Go, the CLI, and email delivera
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
 Assistants guess at SendLayer, and they guess wrong in specific, repeatable ways: there are three
-different event vocabularies, the SDKs silently drop your plain-text body, `WebhookID` comes back as
+different event vocabularies, webhook payloads are nested three levels deep, `WebhookID` comes back as
 a string but must be passed as an integer, and Python's send parameter is `sender` while every other
 SDK calls it `from`. These skills encode all of it.
 
@@ -206,22 +206,22 @@ rather than looking for a package to install.
 
 Each is `skills/<name>/SKILL.md` plus a `references/` directory loaded on demand.
 
-> **`sendlayer-cli` is pre-release.** The CLI itself is not published — there is no npm package, no
-> installer, and no Homebrew tap yet. The skill documents this up front so an assistant tells you the
-> CLI is unavailable rather than handing you an install command that 404s. Its command reference is
-> accurate and ready for the release.
+> **`sendlayer-cli`** is installed with `npm install -g sendlayer-cli`, or as a standalone binary from
+> its [GitHub releases](https://github.com/SendLayer/sendlayer-cli/releases/latest). The `curl | bash`
+> installer, Homebrew and winget are not live yet, and the skill says so rather than handing you an
+> install command that 404s.
 
 ## Coverage
 
 | Package | Registry | Version | Covered |
 |---|---|---|---|
-| `sendlayer` | npm | 1.0.3 | yes |
-| `sendlayer` | PyPI | 1.0.0 | yes |
-| `sendlayer` | RubyGems | 1.0.0 | yes |
-| `sendlayer/sendlayer-php` | Packagist | 1.0.0 | yes |
-| `github.com/sendlayer/sendlayer-go` | Go modules | v1.0.0 | yes |
+| `sendlayer` | npm | 1.1.0 | yes |
+| `sendlayer` | PyPI | 1.1.0 | yes |
+| `sendlayer` | RubyGems | 1.1.0 | yes |
+| `sendlayer/sendlayer-php` | Packagist | 1.1.0 | yes |
+| `github.com/sendlayer/sendlayer-go` | Go modules | v1.1.0 | yes |
 | REST API | — | v1 | yes |
-| `sendlayer-cli` | npm | unpublished | documented, marked pre-release |
+| `sendlayer-cli` | npm + GitHub releases | 0.1.0 | yes |
 
 ## Contributing
 

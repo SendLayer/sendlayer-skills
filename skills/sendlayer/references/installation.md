@@ -6,7 +6,7 @@ https://sendlayer.com/docs/authorizing-your-domain/
 
 Always read the key from the environment (`SENDLAYER_API_KEY`).
 
-## Node.js — npm `sendlayer` ≥ 1.0.3
+## Node.js — npm `sendlayer` ≥ 1.1.0
 
 ```sh
 npm install sendlayer
@@ -19,14 +19,18 @@ import { SendLayer } from 'sendlayer';          // ESM
 // const { SendLayer } = require('sendlayer');   // CommonJS
 
 const sendlayer = new SendLayer(process.env.SENDLAYER_API_KEY);
+
+// Optional config (1.1.0+):
+const tuned = new SendLayer(process.env.SENDLAYER_API_KEY, {
+  timeout: 10000,               // ms, default 30000
+  attachmentURLTimeout: 30000,  // ms, for fetching remote attachments
+  // axios: { ... }             // extra axios options; `headers` are merged with the SDK's own
+});
 ```
 
 `sendlayer.Emails`, `sendlayer.Webhooks`, `sendlayer.Events`.
 
-**The Node constructor takes only an API key.** The internal client supports `timeout` and
-`attachmentURLTimeout`, but `new SendLayer(key)` does not forward a config object, so those
-options are unreachable from the public API. If you need a custom timeout, wrap the call in your
-own `AbortController` / `Promise.race`, or use the REST API directly.
+Requests time out after **30 seconds** by default (1.0.x had no timeout at all).
 
 Useful exported enums:
 
@@ -43,7 +47,7 @@ Prefer these over string literals — they stop you mixing up the subscription a
 vocabularies. Note neither enum covers the *payload* vocabulary you receive at a webhook endpoint
 (`opened`, `bounced`, …); those are plain strings on the wire.
 
-## Python — PyPI `sendlayer` ≥ 1.0.0 (Python 3.7+)
+## Python — PyPI `sendlayer` ≥ 1.1.0 (Python 3.7+)
 
 ```sh
 pip install sendlayer
@@ -54,19 +58,23 @@ import os
 from sendlayer import SendLayer
 
 sendlayer = SendLayer(os.environ["SENDLAYER_API_KEY"])
+
+# Optional config (1.1.0+):
+tuned = SendLayer(os.environ["SENDLAYER_API_KEY"], {
+    "timeout": 10,                  # seconds, default 30
+    "attachmentURLTimeout": 30000,  # ms — camelCase even in Python
+})
 ```
 
 `sendlayer.Emails`, `sendlayer.Webhooks`, `sendlayer.Events` (capitalized).
 
-Exceptions live in `sendlayer.exceptions`. Only `SendLayer`, `SendLayerError`, and
-`SendLayerAPIError` are re-exported from the top-level package — import the more specific ones
-explicitly:
+All seven exception types are exported from the top-level package (1.1.0+):
 
 ```python
-from sendlayer.exceptions import SendLayerValidationError, SendLayerRateLimitError
+from sendlayer import SendLayerError, SendLayerValidationError, SendLayerRateLimitError
 ```
 
-## PHP — Composer `sendlayer/sendlayer-php` ^1.0 (PHP 7.4+)
+## PHP — Composer `sendlayer/sendlayer-php` ^1.1 (PHP 7.4+, Guzzle 7 or 8)
 
 ```sh
 composer require sendlayer/sendlayer-php
@@ -87,7 +95,7 @@ Public properties: `$sendlayer->Emails`, `->Webhooks`, `->Events`.
 PHP 8 named arguments work and are much more readable than the 11-positional-parameter form —
 see [php.md](php.md).
 
-## Ruby — RubyGems `sendlayer` ≥ 1.0.0 (Ruby 2.7+)
+## Ruby — RubyGems `sendlayer` ≥ 1.1.0 (Ruby 2.7+)
 
 ```sh
 gem install sendlayer
@@ -98,8 +106,9 @@ gem install sendlayer
 require 'sendlayer'
 
 sendlayer = SendLayer::SendLayer.new(ENV['SENDLAYER_API_KEY'], {
-  timeout: 30,                  # seconds, default 30
-  attachment_url_timeout: 30000 # ms
+  timeout: 30,                   # seconds, default 30
+  attachment_url_timeout: 30000, # ms
+  headers: {}                    # extra request headers (1.1.0+); cannot override Authorization
 })
 ```
 
@@ -108,10 +117,10 @@ Note the doubled name: the class is `SendLayer::SendLayer`.
 Accessors are **lowercase**: `sendlayer.emails`, `sendlayer.webhooks`, `sendlayer.events`. This
 is the one SDK that differs.
 
-## Go — `github.com/sendlayer/sendlayer-go` v1.0.0 (Go 1.23+)
+## Go — `github.com/sendlayer/sendlayer-go` v1.1.0 (Go 1.23+)
 
 ```sh
-go get github.com/sendlayer/sendlayer-go@v1.0.0
+go get github.com/sendlayer/sendlayer-go@v1.1.0
 ```
 
 Zero external dependencies.
@@ -126,8 +135,10 @@ import (
 
 sl := sendlayer.New(
     os.Getenv("SENDLAYER_API_KEY"),
-    sendlayer.WithTimeout(30*time.Second),
-    // sendlayer.WithBaseURL("..."),  // for testing against a mock
+    sendlayer.WithTimeout(30*time.Second),  // default sendlayer.DefaultTimeout (30s)
+    // sendlayer.WithBaseURL("..."),          // for testing against a mock
+    // sendlayer.WithHeaders(map[string]string{...}),  // v1.1.0+, cannot override Authorization
+    // sendlayer.WithHTTPClient(&http.Client{...}),    // v1.1.0+
 )
 ```
 

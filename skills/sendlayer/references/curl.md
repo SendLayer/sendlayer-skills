@@ -1,7 +1,8 @@
 # REST API — curl and unsupported languages
 
 Use this when there is no SDK for the language (Java, .NET, Rust, Elixir, Kotlin, …) or when you
-need something the SDK cannot express — Node's missing `startFrom`, or a custom timeout.
+need something the SDK cannot express — such as Node's missing `startFrom` or `fromEmail`/`toEmail`
+event filters.
 
 - Base URL: `https://console.sendlayer.com/api/v1/`
 - Auth: `Authorization: Bearer <API_KEY>`
@@ -41,10 +42,9 @@ Response:
 | `"HTML"` | `HTMLContent` |
 | `"Text"` | `PlainContent` |
 
-The SDKs pick exactly one. **Calling REST directly is the only way to attempt both** — send
-`ContentType: "HTML"` with both `HTMLContent` and `PlainContent` and see what the API does with
-it. The documented schema lists `HTMLContent` as required and does not describe multipart
-behaviour, so verify against a real inbox before relying on it.
+For an HTML email with a plain-text fallback, send `ContentType: "HTML"` with **both**
+`HTMLContent` and `PlainContent`. This is exactly what the 1.1.0+ SDKs send when given both
+`html` and `text`.
 
 ### Optional fields
 

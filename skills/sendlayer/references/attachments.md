@@ -39,9 +39,8 @@ The SDK fetches the URL and base64-encodes the body. Notes:
 
 - The fetch is subject to `attachmentURLTimeout`, default **30000 ms**.
 - The fetch is blocking: `send()` does not resolve until the download completes.
-- In the **Node SDK you cannot change this timeout** — `new SendLayer(key)` does not forward a
-  config object. PHP (`attachmentURLTimeout`), Python (`attachmentURLTimeout`), and Ruby
-  (`attachment_url_timeout`) accept it at construction.
+- Set it at construction: Node (`new SendLayer(key, { attachmentURLTimeout })`, 1.1.0+), PHP
+  and Python (`attachmentURLTimeout`), Ruby (`attachment_url_timeout`).
 - A 404 or a slow CDN becomes a failed *send*, not a partial email. If the URL is unreliable,
   download it yourself first and pass a local path.
 

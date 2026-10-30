@@ -4,10 +4,9 @@ description: Use when working with the SendLayer command-line interface — the 
 license: MIT
 metadata:
   author: sendlayer
-  version: "1.0.0"
+  version: "1.1.0"
   homepage: https://sendlayer.com
   source: https://github.com/SendLayer/sendlayer-skills
-  status: pre-release
 ---
 
 # SendLayer CLI
@@ -15,37 +14,30 @@ metadata:
 `sendlayer` — send transactional email, inspect delivery events, and manage webhooks from a
 terminal. Built on oclif; Node 18+.
 
-## Availability: the CLI is not published yet
+## Install
 
-**Do not tell a user to install the CLI from a package manager.** As of this skill version, none of
-these exist:
+Published on npm as `sendlayer-cli` (first release 0.1.0); the binary it installs is `sendlayer`.
+
+```sh
+npm install -g sendlayer-cli     # Node 18+
+sendlayer --version
+```
+
+No Node? Download a standalone binary (Linux/macOS x64 + arm64, Windows x64) from
+https://github.com/SendLayer/sendlayer-cli/releases/latest — each archive is listed in
+`SHA256SUMS`.
 
 | Channel | Status |
 |---|---|
-| `npm install -g sendlayer-cli` | **404** — not on npm |
-| `curl -fsSL https://sendlayer.com/install.sh \| bash` | **404** |
-| `brew install sendlayer/sendlayer/sendlayer` | no tap exists |
-| GitHub releases | no public repo |
+| `npm install -g sendlayer-cli` | **available** |
+| GitHub release binaries | **available** |
+| `curl -fsSL https://sendlayer.com/install.sh \| bash`, `irm …/install.ps1 \| iex` | not live yet |
+| `brew install sendlayer/sendlayer/sendlayer` | not live yet — no tap |
+| `winget install SendLayer.SendLayerCLI` | not live yet |
 
-If `sendlayer` is not already on the user's `PATH`, say the CLI is not yet released and offer the
-alternatives below. Do not invent an install command, and do not suggest a similarly-named
-third-party package.
-
-**What to use instead, today:**
-
-- **The SDKs** — all five are published and stable. See the `sendlayer` skill.
-- **curl** — every CLI operation is one REST call. See the `sendlayer` skill's `references/curl.md`.
-- **The MCP server** at `https://mcp.sendlayer.com`, which covers send, events, and webhook
-  management without any local install.
-
-If the user *does* have `sendlayer` working (a local build, or a future release), everything below
-is accurate — it is generated from the CLI's own command manifest.
-
-Building from a local source checkout, if they have one:
-
-```sh
-npm install && npm run build && npm link   # provides `sendlayer` on PATH
-```
+Do not suggest the channels marked "not live yet", and do not suggest a similarly-named
+third-party package. The npm package is `sendlayer-cli`; plain `sendlayer` on npm is the Node SDK,
+not the CLI.
 
 ## Authentication
 
@@ -70,8 +62,10 @@ Credentials file, mode `0600`:
 | Linux / macOS | `$XDG_CONFIG_HOME/sendlayer/credentials.json`, default `~/.config/sendlayer/credentials.json` |
 | Windows | `%APPDATA%\sendlayer\credentials.json` |
 
-Multiple accounts via `--profile <name>` (default `default`) on every command including `login`
-and `logout`.
+Multiple accounts via `--profile <name>` on every command including `login` and `logout`. Without
+it, commands use the stored default profile — the first one saved. Logging out of the default
+promotes another stored profile, and the CLI prints a notice when it does. See
+[references/auth.md](references/auth.md).
 
 **In CI, use `SENDLAYER_API_KEY`** — never `sendlayer login`, which writes a key to disk on the
 runner.
@@ -90,8 +84,8 @@ runner.
 | `sendlayer webhooks delete <id>` | delete a webhook |
 | `sendlayer webhooks listen` | receive events locally and forward them |
 
-Global flags on every command: `--api-key` (env `SENDLAYER_API_KEY`), `--profile` (default
-`default`), `--json`.
+Global flags on every command: `--api-key` (env `SENDLAYER_API_KEY`), `--profile` (default: the
+stored default profile), `--json`.
 
 Subcommands are space-separated (`sendlayer emails send`, not `sendlayer emails:send`), though the
 colon form also works.
@@ -172,7 +166,7 @@ run — accept, or your webhook list fills with dead tunnel URLs.
 
 | # | Mistake | Fix |
 |---|---|---|
-| 1 | Telling a user to `npm install -g sendlayer-cli` | Not published. See "Availability" above. |
+| 1 | `npm install -g sendlayer`, or suggesting `brew`/`curl \| bash` | The CLI package is `sendlayer-cli`; `sendlayer` is the Node SDK. Only npm and the GitHub release binaries are live. |
 | 2 | `webhooks create --event delivered` | Subscription names are nouns: `delivery`. |
 | 3 | `events list --event delivery` | History names are past-tense: `delivered`. |
 | 4 | Expecting `webhooks listen` to open its own tunnel | Run ngrok/cloudflared yourself; `--public-url` is required and must be HTTPS. |
@@ -181,7 +175,7 @@ run — accept, or your webhook list fills with dead tunnel URLs.
 | 7 | `--limit 500` | Maximum is 100. |
 | 8 | `sendlayer login` in CI | Writes a key to the runner's disk. Set `SENDLAYER_API_KEY` instead. |
 | 9 | Parsing human-readable stdout in a script | Use `--json`. It is also auto-enabled when stdout is not a TTY. |
-| 10 | Passing both `--text` and `--html` | Only the HTML is transmitted — same SDK limitation. The text is silently dropped. |
+| 10 | Sending `--html` without `--text` | Pass both for a plain-text fallback — both bodies are sent. |
 | 11 | Assuming exit code 2 means auth failure | 2 is *usage*. Auth is 3 (missing) and 4 (invalid). See the table below. |
 
 ## Exit codes
@@ -193,9 +187,9 @@ run — accept, or your webhook list fills with dead tunnel URLs.
 | 2 | usage error (bad flags) |
 | 3 | auth missing — no key found |
 | 4 | auth invalid — key rejected (401/403) |
-| 5 | validation error |
-| 6 | API error |
-| 7 | network error |
+| 5 | validation error — the SDK's checks, or HTTP 400/422 |
+| 6 | API error — 404, 429, 5xx |
+| 7 | network error — timeout or connection failure |
 | 130 | interrupted (Ctrl+C) |
 
 These differ from the older Go-based SendLayer CLI. Script against these values.
@@ -209,12 +203,14 @@ so piping works without the flag:
 sendlayer events list --event failed --limit 100 | jq -r '.Events[].Message.Headers.To[0]'
 ```
 
-Errors in JSON mode are emitted as a structured payload with a `message`, an optional `code`, and
-the process exits with the matching code above.
+Errors in JSON mode go to stderr as `{"error": …, "code": …, "details"?: …}` — API failures carry
+`details.statusCode` — and the process exits with the matching code above.
 
 ## Resources
 
 - API reference: https://developers.sendlayer.com
 - API keys: https://sendlayer.com/docs/managing-api-keys/
 - Domain verification: https://sendlayer.com/docs/authorizing-your-domain/
-- The SDKs (published and stable) — see the `sendlayer` skill
+- npm package: https://www.npmjs.com/package/sendlayer-cli
+- Source and releases: https://github.com/SendLayer/sendlayer-cli
+- The SDKs — see the `sendlayer` skill

@@ -57,12 +57,9 @@ update the skill in the same PR that bumps the version floor:
 
 - Python's `Emails.send()` takes `sender=`, not `from=` (`from` is a Python keyword).
 - Ruby exposes lowercase `emails` / `webhooks` / `events`; the other SDKs capitalize.
-- All five SDKs send **either** `HTMLContent` **or** `PlainContent`, never both — passing `html`
-  silently drops `text`.
 - `Webhooks.get()` returns `WebhookID` as a string; `Webhooks.delete()` requires an integer.
 - Node's `GetEventsOptions` declares `fromEmail` / `toEmail` but `Events.get()` never sends them.
-- Node's `SendLayer` constructor does not forward a config object to the underlying client, so
-  `attachmentURLTimeout` is unreachable from the public API.
+- Node's `Events.get` has no `startFrom`, so history cannot be paginated from Node.
 
 ## Validating a change
 

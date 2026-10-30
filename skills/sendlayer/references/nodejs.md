@@ -1,6 +1,6 @@
 # Node.js
 
-npm `sendlayer` ≥ 1.0.3. Node 18+. CommonJS and ESM, TypeScript types included. Uses `axios`.
+npm `sendlayer` ≥ 1.1.0. Node 18+. CommonJS and ESM, TypeScript types included. Uses `axios`.
 
 ```sh
 npm install sendlayer
@@ -13,8 +13,9 @@ import {
   SendLayer,
   EventType,
   WebhookEventOptions,
-  SendLayerAPIError,
   SendLayerError,
+  SendLayerRateLimitError,
+  SendLayerValidationError,
 } from 'sendlayer';
 
 const sendlayer = new SendLayer(process.env.SENDLAYER_API_KEY);
@@ -27,6 +28,7 @@ try {
     replyTo: 'support@yourdomain.com',
     subject: 'Invoice #12345',
     html: '<html><body><p>Your invoice is attached.</p></body></html>',
+    text: 'Your invoice is attached.',   // plain-text fallback, sent alongside the HTML
     tags: ['invoice', 'billing'],
     headers: { 'X-Invoice-Id': '12345' },
     attachments: [
@@ -35,8 +37,13 @@ try {
   });
   console.log('sent', MessageID);
 } catch (err) {
-  if (err instanceof SendLayerError) {
-    console.error('send failed:', err.message);
+  if (err instanceof SendLayerRateLimitError) {
+    // back off and retry
+  } else if (err instanceof SendLayerValidationError) {
+    console.error('bad request:', err.message, err.codes);   // e.g. [19] invalid recipient
+  } else if (err instanceof SendLayerError) {
+    // every SDK error carries statusCode (undefined for local/network errors), errors and codes
+    console.error('send failed:', err.statusCode, err.message);
   } else {
     throw err;
   }
@@ -69,7 +76,7 @@ await sendlayer.Webhooks.delete(Number(webhooks[0].WebhookID));  // cast: it is 
 
 | Call | Returns |
 |---|---|
-| `new SendLayer(apiKey)` | client with `.Emails`, `.Webhooks`, `.Events` |
+| `new SendLayer(apiKey, config?)` | client with `.Emails`, `.Webhooks`, `.Events`. `config`: `timeout` (ms, default 30000), `attachmentURLTimeout`, `axios` |
 | `Emails.send(options)` | `Promise<{ MessageID: string }>` |
 | `Events.get(options?)` | `Promise<{ TotalRecords: number, Events: Event[] }>` |
 | `Webhooks.create({url, event})` | `Promise<{ NewWebhookID: number }>` |
@@ -90,14 +97,11 @@ plain strings.
 
 These are real gaps in the Node SDK, not in the API:
 
-1. **No config object.** `new SendLayer(key)` accepts nothing else. The internal `BaseClient`
-   supports `timeout` and `attachmentURLTimeout` but nothing forwards them, so you cannot set
-   either. PHP, Python, and Ruby can.
-2. **`Events.get` ignores `fromEmail` and `toEmail`.** They exist in the `GetEventsOptions`
+1. **`Events.get` ignores `fromEmail` and `toEmail`.** They exist in the `GetEventsOptions`
    TypeScript type — so your editor will autocomplete them — but they are never added to the query
    string. Filtering by address does not work. Filter client-side on
    `e.Message.Headers.To` instead.
-3. **No `startFrom`.** Pagination is not possible from Node. PHP, Python, Ruby, and Go have it.
+2. **No `startFrom`.** Pagination is not possible from Node. PHP, Python, Ruby, and Go have it.
 
 If you need any of these, call the REST endpoint directly with `fetch` — see [curl.md](curl.md).
 
@@ -145,8 +149,9 @@ app.listen(3000);
 
 ## Testing without sending
 
-Point tests at a mock rather than the real API. The Node SDK gives you no `baseURL` override
-(unlike Go's `WithBaseURL`), so stub at the module boundary:
+Point tests at a mock rather than the real API. Either pass a mock server's URL through the axios
+config (`new SendLayer(key, { axios: { baseURL: 'http://localhost:4010/' } })`, 1.1.0+), or stub
+at the module boundary:
 
 ```js
 import { vi } from 'vitest';

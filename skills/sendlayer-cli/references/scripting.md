@@ -19,11 +19,13 @@ Errors in JSON mode go to **stderr** as a structured object:
 
 ```json
 {
-  "error": "Invalid --header value (expected Key=Value): X-Id: 1",
-  "code": "VALIDATION",
-  "details": null
+  "error": "Invalid recipient email address: not-an-email",
+  "code": "SendLayerValidationError"
 }
 ```
+
+API failures add `"code": "API_ERROR"` and a `details` object with `statusCode` and the raw
+`response`; timeouts and connection failures use `"code": "NETWORK_ERROR"`.
 
 So `2>/dev/null` discards your only diagnostic. Capture both streams when scripting.
 
@@ -36,17 +38,20 @@ So `2>/dev/null` discards your only diagnostic. Capture both streams when script
 | 2 | `USAGE` | bad flags or arguments |
 | 3 | `AUTH_MISSING` | no API key found in flag, env, or credentials |
 | 4 | `AUTH_INVALID` | key rejected — HTTP 401 or 403 |
-| 5 | `VALIDATION` | client-side validation failed |
-| 6 | `API` | the API rejected the request (including 429 rate limits) |
-| 7 | `NETWORK` | connection failure |
+| 5 | `VALIDATION` | the SDK's validation failed, or the API returned 400/422 |
+| 6 | `API` | any other API failure — 404, 429, 5xx |
+| 7 | `NETWORK` | timeout or connection failure; no response arrived |
 | 130 | `INTERRUPTED` | Ctrl+C |
 
 Two traps:
 
 - **2 is *usage*, not auth.** Auth failures are 3 and 4. Scripts written against the older Go CLI's
   codes will misclassify.
-- **Rate limiting is 6, not a distinct code.** To detect a 429 specifically, inspect the JSON error
-  payload rather than the exit code.
+- **Rate limiting is 6, not a distinct code.** To detect a 429 specifically, read
+  `.details.statusCode` from the JSON error on stderr.
+- **The CLI's own flag-format checks exit 1, not 5.** A malformed `--header`, or a missing
+  `--from`/`--to`/`--subject`, reports `"code": "Error"` with exit 1. Only checks made by the SDK
+  (bad addresses, bad event names) exit 5.
 
 Branching on them:
 
@@ -96,39 +101,24 @@ jobs:
         with:
           node-version: 20
 
-      # The CLI is not published yet — until it is, use the SDK or curl here.
+      - run: npm install -g sendlayer-cli
+
       - name: Send notification
         env:
           SENDLAYER_API_KEY: ${{ secrets.SENDLAYER_API_KEY }}
         run: |
-          curl -sS --fail-with-body \
-            --url https://console.sendlayer.com/api/v1/email \
-            --header "Authorization: Bearer $SENDLAYER_API_KEY" \
-            --header 'Content-Type: application/json' \
-            --data @- <<JSON
-          {
-            "From": {"name": "CI", "email": "ci@yourdomain.com"},
-            "To": [{"name": "Team", "email": "team@yourdomain.com"}],
-            "Subject": "Released ${{ github.event.release.tag_name }}",
-            "ContentType": "HTML",
-            "HTMLContent": "<p>${{ github.event.release.html_url }}</p>"
-          }
-          JSON
-```
-
-Once the CLI ships, the send step becomes:
-
-```yaml
-      - run: |
           sendlayer emails send \
             --from "CI <ci@yourdomain.com>" \
             --to team@yourdomain.com \
             --subject "Released ${{ github.event.release.tag_name }}" \
             --html "<p>${{ github.event.release.html_url }}</p>" \
+            --text "${{ github.event.release.html_url }}" \
             --json
-        env:
-          SENDLAYER_API_KEY: ${{ secrets.SENDLAYER_API_KEY }}
 ```
+
+Pin a version (`npm install -g sendlayer-cli@0.1.0`) if you need reproducible runs. Runners
+without Node can use the standalone binary from the
+[GitHub releases](https://github.com/SendLayer/sendlayer-cli/releases/latest) instead.
 
 Never `sendlayer login` in CI — it writes a key to the runner's disk.
 
@@ -182,6 +172,5 @@ Reach for an SDK or curl when you need:
 - **Pagination** — no offset flag, so you cannot read past the newest 100 events. PHP, Python, Ruby,
   and Go have `startFrom`.
 - **Batch sending** — no such endpoint anywhere; it is one call per message. Loop with a delay.
-- **A true multipart body** — passing HTML and text transmits only the HTML.
 - **Updating a webhook** — delete and recreate.
 - **Filtering events by address** — not exposed by the CLI (and broken in the Node SDK).

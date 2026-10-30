@@ -158,9 +158,9 @@ This is a development tool. It creates and destroys real webhooks and depends on
 staying alive. For production, create webhooks once against a stable HTTPS endpoint
 ([webhooks.md](webhooks.md)) and handle them in your application.
 
-## Alternatives when the CLI is unavailable
+## Doing it by hand
 
-Since the CLI is not published yet, the equivalent by hand:
+Where installing the CLI is not an option, the equivalent by hand:
 
 1. Start a tunnel: `ngrok http 3000`.
 2. Create the webhooks against the tunnel URL with the SDK or curl.

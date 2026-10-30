@@ -4,13 +4,13 @@
     {
       "id": 1,
       "prompt": "Install the SendLayer CLI.",
-      "expected_output": "Agent must state that the CLI is not published yet — npm sendlayer-cli 404s, there is no install.sh and no Homebrew tap — and offer the SDKs, curl, or the MCP server instead. It must not emit an install command that fails.",
+      "expected_output": "Agent gives `npm install -g sendlayer-cli` (Node 18+) and/or the standalone binaries on the GitHub releases page, and verifies with `sendlayer --version`. It must not offer channels that are not live yet (the sendlayer.com install.sh/install.ps1 scripts, Homebrew, winget), and must not confuse the CLI with the `sendlayer` npm package, which is the Node SDK.",
       "files": [],
       "expectations": [
-        "Does not instruct the user to run npm install -g sendlayer-cli",
-        "Does not reference https://sendlayer.com/install.sh or a Homebrew tap as working",
-        "States clearly that the CLI is unreleased",
-        "Offers a working alternative (SDK, curl, or MCP)"
+        "Instructs the user to run npm install -g sendlayer-cli, or to download a binary from the GitHub releases page",
+        "Does not reference https://sendlayer.com/install.sh, a Homebrew tap, or winget as working",
+        "Does not tell the user to npm install -g sendlayer (the SDK) to get the CLI",
+        "Verifies the install with sendlayer --version"
       ]
     },
     {
@@ -28,7 +28,7 @@
     {
       "id": 3,
       "prompt": "Send a SendLayer CLI email to alice@example.com and bob@example.com.",
-      "expected_output": "Uses a single comma-separated --to value, because --to is not repeatable. Repeating the flag would silently drop the first recipient.",
+      "expected_output": "Uses a single comma-separated --to value, because --to is not repeatable. Passing --to twice is rejected with 'Flag --to can only be specified once'.",
       "files": [],
       "expectations": [
         "Uses one --to flag with comma-separated addresses",

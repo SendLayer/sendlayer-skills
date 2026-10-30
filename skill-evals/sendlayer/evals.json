@@ -41,12 +41,12 @@
     {
       "id": 4,
       "prompt": "I want to send an HTML email with a plain-text fallback using the SendLayer Node SDK.",
-      "expected_output": "Agent must state that the SDK cannot send a true multipart message — passing html silently discards text — rather than writing code that appears to do it. Should offer the alternatives (well-degrading HTML, or raw REST with verification).",
+      "expected_output": "Agent passes both html and text to Emails.send() — SDK 1.1.0+ sends HTMLContent and PlainContent together — and requires sendlayer >= 1.1.0, noting that 1.0.x silently dropped the text body.",
       "files": [],
       "expectations": [
-        "States explicitly that text is dropped when html is set",
-        "Does not present send({html, text}) as producing a multipart email",
-        "Offers a concrete alternative rather than only refusing",
+        "Calls Emails.send with both html and text",
+        "States or pins sendlayer >= 1.1.0 (or warns that 1.0.x dropped text)",
+        "Does not claim the SDK cannot send a plain-text fallback",
         "Does not invent a multipart or contentType parameter"
       ]
     },

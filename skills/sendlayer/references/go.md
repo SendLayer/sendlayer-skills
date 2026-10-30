@@ -1,9 +1,9 @@
 # Go
 
-Module `github.com/sendlayer/sendlayer-go` v1.0.0. Go 1.23+. **Zero external dependencies.**
+Module `github.com/sendlayer/sendlayer-go` v1.1.0. Go 1.23+. **Zero external dependencies.**
 
 ```sh
-go get github.com/sendlayer/sendlayer-go@v1.0.0
+go get github.com/sendlayer/sendlayer-go@v1.1.0
 ```
 
 The package name is `sendlayer` even though the module path ends in `sendlayer-go`.
@@ -14,7 +14,6 @@ The package name is `sendlayer` even though the module path ends in `sendlayer-g
 package main
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -37,6 +36,7 @@ func main() {
 		ReplyTo: "support@yourdomain.com",
 		Subject: "Invoice #12345",
 		Html:    "<html><body><p>Your invoice is attached.</p></body></html>",
+		Text:    "Your invoice is attached.", // plain-text fallback, sent alongside Html
 		Tags:    []string{"invoice", "billing"},
 		Headers: map[string]string{"X-Invoice-Id": "12345"},
 		Attachments: []sendlayer.Attachment{
@@ -44,9 +44,9 @@ func main() {
 		},
 	})
 	if err != nil {
-		var apiErr *sendlayer.SendLayerAPIError
-		if errors.As(err, &apiErr) {
-			log.Fatalf("API rejected the send (%d): %s", apiErr.StatusCode, apiErr.Message)
+		// Every SDK error shares StatusCode, Response, Errors and Codes().
+		if slErr, ok := sendlayer.AsError(err); ok {
+			log.Fatalf("send failed (status %d, codes %v): %s", slErr.StatusCode, slErr.Codes(), slErr.Message)
 		}
 		log.Fatal(err)
 	}
@@ -107,12 +107,14 @@ func main() {
 | `Webhooks.Get() ([]Webhook, error)` | envelope already unwrapped |
 | `Webhooks.Delete(webhookID int) error` | |
 
-Options: `sendlayer.WithTimeout(time.Duration)`, `sendlayer.WithBaseURL(string)`.
+Options: `sendlayer.WithTimeout(time.Duration)` (default `sendlayer.DefaultTimeout`, 30s),
+`sendlayer.WithBaseURL(string)`, and from v1.1.0 `sendlayer.WithHeaders(map[string]string)`
+(applied before `Authorization`, so they cannot replace it) and
+`sendlayer.WithHTTPClient(*http.Client)`.
 
-`WithBaseURL` is the only SDK-level way to point at a mock server — useful in tests, and something
-the Node SDK does not offer.
+`WithBaseURL` points the client at a mock server — useful in tests.
 
-Sends `User-Agent: SendLayer-Go-SDK/1.0.0`.
+Sends `User-Agent: SendLayer-Go-SDK/<sendlayer.Version>`.
 
 ## `interface{}` recipient fields
 
@@ -154,12 +156,13 @@ if count > 100 {
 ## Errors
 
 ```go
-type SendLayerError struct{ Message string }               // base
-type SendLayerAPIError struct {                            // carries HTTP detail
+type SendLayerError struct { // base, embedded in every other type
 	Message    string
-	StatusCode int
+	StatusCode int          // 0 for local validation, timeouts and transport errors
 	Response   []byte
+	Errors     []ErrorEntry // SendLayer's {Code, Message} entries
 }
+type SendLayerAPIError struct{ SendLayerError } // Error() is "API Error <status>: <message>"
 type SendLayerAuthenticationError struct{ SendLayerError }
 type SendLayerValidationError struct{ SendLayerError }
 type SendLayerNotFoundError struct{ SendLayerError }
@@ -182,11 +185,24 @@ if errors.As(err, &validation) {
 }
 ```
 
-`SendLayerAPIError` is the one that carries `StatusCode` and the raw `Response` bytes — log those
-when a send fails for an unexpected reason.
+To read the shared fields without caring which type it is, use `sendlayer.AsError` (v1.1.0+):
 
-Note the embedded types do **not** override `Error()`, so `errors.Is` comparisons against the base
-will not distinguish them — always use `errors.As` with a concrete pointer type.
+```go
+if slErr, ok := sendlayer.AsError(err); ok && slices.Contains(slErr.Codes(), 14) {
+	// recipient suppressed — do not retry
+}
+```
+
+HTTP mapping: 400/422 → Validation, 401 → Authentication, 404 → NotFound, 429 → RateLimit,
+500 → InternalServer, any other status (including 502/503/504) → `SendLayerAPIError`. A timeout
+returns `SendLayerError` with `Request timed out after <duration>`; `encoding/json` errors never
+escape the SDK.
+
+`errors.Is` will not distinguish these types — use `errors.As` with a concrete pointer type.
+
+> **Upgrading from v1.0.0:** `SendLayerAPIError` now embeds `SendLayerError`. Field reads
+> (`apiErr.StatusCode`) still work, but composite literals that set those fields directly — and
+> positional `SendLayerError{"msg"}` literals, typically in test fakes — no longer compile.
 
 ## `net/http` webhook handler
 

@@ -12,8 +12,8 @@ Names below are the Node.js / Ruby / Go form. Python uses `sender` instead of `f
 | `from` | yes | string or `{email, name}` | Must be on a domain verified in SendLayer. |
 | `to` | yes | string, object, or array | See recipient formats below. |
 | `subject` | yes | string | |
-| `text` | one of `text`/`html` | string | Plain-text body. **Dropped if `html` is also set.** |
-| `html` | one of `text`/`html` | string | HTML body. Wins over `text`. |
+| `text` | one of `text`/`html` | string | Plain-text body. Sent alongside `html` when both are set. |
+| `html` | one of `text`/`html` | string | HTML body. |
 | `cc` | no | string, object, or array | |
 | `bcc` | no | string, object, or array | |
 | `replyTo` | no | string, object, or array | |
@@ -47,21 +47,30 @@ https://sendlayer.com/docs/getting-started-with-the-sendlayer-api/
 
 ## Content type is derived, not chosen
 
-You do not set `ContentType` yourself. Every SDK computes it:
+You do not set `ContentType` yourself. Every SDK (1.1.0+) computes it:
 
 ```
-ContentType = html ? "HTML" : "Text"
-body field  = html ? "HTMLContent" : "PlainContent"
-body value  = html || text
+ContentType  = html ? "HTML" : "Text"
+HTMLContent  = html   (when set)
+PlainContent = text   (when set)
 ```
 
-**Consequence: passing both `html` and `text` sends only the HTML.** The plain-text argument is
-accepted, ignored, and never transmitted. There is no way to send a true multipart
-`text/plain` + `text/html` message through `Emails.send()`.
+**Pass both `html` and `text` for an HTML email with a plain-text fallback** — both fields are
+sent. This is the recommended shape for deliverability:
 
-If a user asks for "HTML with a plain-text fallback", tell them the SDK cannot do it rather than
-writing code that appears to. A workable compromise is HTML that degrades well, or sending the
-plain-text version to clients you know cannot render HTML.
+```js
+await sendlayer.Emails.send({
+  from: 'you@yourdomain.com',
+  to: 'recipient@example.com',
+  subject: 'Welcome!',
+  html: '<h1>Welcome!</h1><p>Thanks for signing up.</p>',
+  text: 'Welcome! Thanks for signing up.',
+});
+```
+
+> Before 1.1.0, every SDK sent **only** the HTML when both were passed and silently discarded
+> `text`. If a project pins an older version (`sendlayer@1.0.x`, `sendlayer-go@v1.0.0`, …),
+> upgrade it rather than working around the bug.
 
 ## Tags
 
