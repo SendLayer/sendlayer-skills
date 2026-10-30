@@ -71,22 +71,15 @@ Only now. Common triggers:
 Content is real but secondary. A well-authenticated domain with good engagement gets a lot of
 latitude; a poorly authenticated one gets none regardless of prose.
 
-## The plain-text problem with SendLayer
+## Send a plain-text alternative
 
-Every SendLayer SDK transmits **either** `HTMLContent` **or** `PlainContent`, never both. Passing
-`html` silently discards `text`.
+Send every HTML email with a plain-text part. With SendLayer SDKs 1.1.0+, pass both `html` and
+`text` and both are transmitted; over REST, include both `HTMLContent` and `PlainContent`.
 
-So you cannot ship a `multipart/alternative` message through the SDK. Practical responses:
+SDKs before 1.1.0 transmitted **only** the HTML when both were passed, silently discarding `text`.
+If a project pins a 1.0.x SDK, upgrading is the fix — not a workaround.
 
-1. **Write HTML that degrades well** — real text in the body, not text baked into images. This
-   recovers most of the benefit.
-2. **Call the REST API directly** if you want to attempt both fields, and verify against a real
-   inbox before relying on it. The documented schema does not describe multipart behaviour, so treat
-   it as unverified.
-3. **Do not claim a fallback you do not have.** If someone asks for "HTML with a plain-text
-   alternative", tell them the SDK cannot do it.
-
-The penalty is modest. Do not let it stop a launch — but do not pretend it is handled.
+The penalty for a missing text part is modest, but it is now free to avoid.
 
 ## Engagement is the strongest signal
 

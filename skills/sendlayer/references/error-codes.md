@@ -64,42 +64,56 @@ like abuse. Fail fast and surface the problem.
 
 ## Mapping to exceptions
 
-The SDKs translate these into typed errors:
+The SDKs (1.1.0+) translate these into typed errors, the same way in all five:
 
 | Class | Triggered by |
 |---|---|
-| `SendLayerAuthenticationError` | codes 1, 12, 13 / HTTP 401 |
-| `SendLayerValidationError` | client-side validation, HTTP 422 |
+| `SendLayerValidationError` | client-side validation, HTTP 400 or 422 |
+| `SendLayerAuthenticationError` | HTTP 401 (codes 1, 12, 13) |
 | `SendLayerNotFoundError` | HTTP 404 |
 | `SendLayerRateLimitError` | HTTP 429 |
-| `SendLayerInternalServerError` | HTTP 5xx |
-| `SendLayerAPIError` | anything else the API rejected |
-| `SendLayerError` | base class |
+| `SendLayerInternalServerError` | HTTP 500 only |
+| `SendLayerAPIError` | any other status, including 502, 503 and 504 |
+| `SendLayerError` | base class; raised directly for timeouts and connection failures |
 
 PHP appends `Exception` instead of `Error` (`SendLayerValidationException`) and its base class is
-`SendLayer\Exceptions\SendLayerException`. Go returns `*SendLayerError` and typed wrappers as
-values.
+`SendLayer\Exceptions\SendLayerException`. Go returns these as pointer types; use `errors.As`
+or `sendlayer.AsError`.
+
+Every error carries the API's own message (multiple `Errors` messages joined with `; `) and the
+raw `Errors` entries. Node, Python, Ruby and Go also expose the HTTP status and a `codes` helper
+on every type; PHP exposes `$errors` on every exception and `$statusCode` on
+`SendLayerAPIException`. A local validation error has no status; any **other** error with an
+empty status (`undefined` / `None` / `nil` / `0`) means no response arrived — a timeout or
+connection failure.
 
 ## Handling pattern
 
 ```js
-import { SendLayerAPIError, SendLayerError } from 'sendlayer';
+import { SendLayerError, SendLayerRateLimitError, SendLayerValidationError } from 'sendlayer';
+
+const PERMANENT = [13, 14, 15, 16, 17, 19, 23, 32];
 
 async function send(sendlayer, params) {
   try {
     return await sendlayer.Emails.send(params);
   } catch (err) {
-    if (err instanceof SendLayerAPIError) {
-      // API rejected it — inspect the code before deciding to retry
-      console.error('SendLayer rejected the send:', err.message);
-      return { failed: true, retryable: false };
+    if (!(err instanceof SendLayerError)) throw err; // programmer error — do not swallow
+
+    if (err instanceof SendLayerValidationError && err.statusCode === undefined) {
+      return { failed: true, retryable: false };       // caught locally, nothing was sent
     }
-    if (err instanceof SendLayerError) {
-      // client-side validation, bad input
-      console.error('Bad request:', err.message);
-      return { failed: true, retryable: false };
+    if (err.statusCode === undefined) {
+      // timeout or connection failure: the message may already have been sent
+      return { failed: true, retryable: 'check-events-first' };
     }
-    throw err; // network or programmer error — do not swallow
+    if (err instanceof SendLayerRateLimitError || err.statusCode >= 500) {
+      return { failed: true, retryable: true };          // back off, then retry
+    }
+    if (err.codes.some((code) => PERMANENT.includes(code))) {
+      console.error('SendLayer rejected the send:', err.message, err.codes);
+    }
+    return { failed: true, retryable: false };
   }
 }
 ```

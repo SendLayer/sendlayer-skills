@@ -4,7 +4,7 @@ description: Use when building anything that sends email — choosing between tr
 license: MIT
 metadata:
   author: sendlayer
-  version: "1.0.0"
+  version: "1.1.0"
   homepage: https://sendlayer.com
   source: https://github.com/SendLayer/sendlayer-skills
 ---
@@ -61,7 +61,7 @@ problem is a missing DKIM record.
 | Fact | Why it matters |
 |---|---|
 | The `From` address must be on a domain verified in SendLayer | Unverified sends fail with error code 32. There is no way around it, and this is a feature. |
-| **All SendLayer SDKs send either HTML or plain text, never both** | Passing `html` silently discards `text`. You therefore cannot ship a plain-text alternative through the SDK, and a missing one is a real (small) spam-scoring penalty. See [html-email.md](references/html-email.md) for what to do instead. |
+| **Always send a plain-text alternative** | Pass both `html` and `text`; SendLayer SDKs 1.1.0+ send both. A missing plain-text part is a real (small) spam-scoring penalty. SDKs 1.0.x silently dropped `text` — upgrade. See [html-email.md](references/html-email.md). |
 | Error 14, "Recipient email is suppressed" | SendLayer already knows this address is bad. Treat it as permanent and remove the address; do not retry. |
 | There is no idempotency key | A blind retry after a timeout can deliver twice. Duplicate mail annoys recipients and increases complaint rates. |
 | Open and click tracking rewrites links | Tracked links point at SendLayer's domain, which is normal but means link reputation is partly shared. Do not also wrap them in a public URL shortener. |

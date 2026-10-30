@@ -182,24 +182,21 @@ Conditional comments target it:
 - Descriptive link text — "View your order", not "click here".
 - `alt` on every image; `alt=""` for purely decorative ones.
 
-## The plain-text alternative — and the SendLayer limitation
+## The plain-text alternative
 
 A `multipart/alternative` message carrying both HTML and plain text is standard best practice. It
 helps marginally with spam scoring and serves text-only clients.
 
-**You cannot produce one through the SendLayer SDKs.** All five build the payload as *either*
-`HTMLContent` *or* `PlainContent` — passing `html` silently discards `text`.
+With the SendLayer SDKs (1.1.0+), pass both `html` and `text` and both are sent. Over REST, send
+`HTMLContent` and `PlainContent` together with `ContentType: "HTML"`.
 
-What to do:
+Write the text version deliberately rather than stripping tags from the HTML: keep the same
+content and links, written out as plain URLs. HTML that degrades well — real text in the markup,
+meaningful `alt` attributes, nothing that exists only inside an image — still matters, because
+many clients render the HTML part.
 
-1. **Write HTML that degrades well.** Real text in the markup, meaningful `alt` attributes, no
-   content that exists only inside an image. This recovers most of the practical benefit.
-2. **If you need a true multipart message,** call the REST API directly and verify against a real
-   inbox — the documented schema does not describe multipart behaviour, so do not assume it works.
-3. **Do not tell a user they have a plain-text fallback when they do not.**
-
-The penalty is small. It is not a reason to delay a launch, but it is a reason not to claim the box
-is ticked.
+> SendLayer SDKs before 1.1.0 sent only the HTML when both were passed and silently discarded
+> `text`. Check the project's pinned version before assuming the fallback is going out.
 
 ## Testing
 

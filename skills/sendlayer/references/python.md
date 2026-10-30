@@ -1,6 +1,6 @@
 # Python
 
-PyPI `sendlayer` ≥ 1.0.0. Python 3.7+. Uses `requests`. Synchronous — there is no async client.
+PyPI `sendlayer` ≥ 1.1.0. Python 3.7+. Uses `requests`. Synchronous — there is no async client.
 
 ```sh
 pip install sendlayer
@@ -22,8 +22,8 @@ sendlayer.Emails.send(from="you@yourdomain.com", ...)     # SyntaxError
 import os
 from datetime import datetime, timedelta
 
-from sendlayer import SendLayer
-from sendlayer.exceptions import (
+from sendlayer import (
+    SendLayer,
     SendLayerError,
     SendLayerValidationError,
     SendLayerRateLimitError,
@@ -39,6 +39,7 @@ try:
         reply_to="support@yourdomain.com",
         subject="Invoice #12345",
         html="<html><body><p>Your invoice is attached.</p></body></html>",
+        text="Your invoice is attached.",   # plain-text fallback, sent alongside the HTML
         tags=["invoice", "billing"],
         headers={"X-Invoice-Id": "12345"},
         attachments=[{"path": "/abs/path/invoice.pdf", "type": "application/pdf"}],
@@ -47,9 +48,10 @@ try:
 except SendLayerRateLimitError:
     print("rate limited — back off and retry")
 except SendLayerValidationError as exc:
-    print("bad request:", exc)          # do not retry
+    print("bad request:", exc.message, exc.codes)   # do not retry
 except SendLayerError as exc:
-    print("send failed:", exc)
+    # every exception carries status_code (None for local/network errors), response, errors, codes
+    print("send failed:", exc.status_code, exc.message)
 
 # ---- Query events -------------------------------------------------------
 result = sendlayer.Events.get(
@@ -78,12 +80,12 @@ sendlayer.Webhooks.delete(int(webhooks[0]["WebhookID"]))   # cast: it is a strin
 
 | Call | Returns |
 |---|---|
-| `SendLayer(api_key)` | client with `.Emails`, `.Webhooks`, `.Events` (capitalized) |
+| `SendLayer(api_key, config=None)` | client with `.Emails`, `.Webhooks`, `.Events` (capitalized) |
 | `Emails.send(sender, to, subject, text=None, html=None, cc=None, bcc=None, reply_to=None, attachments=None, headers=None, tags=None)` | `dict` with `MessageID` |
 | `Events.get(start_date=None, end_date=None, event=None, message_id=None, start_from=None, retrieve_count=None)` | `dict` with `TotalRecords`, `Events` |
 | `Webhooks.create(url, event)` | `dict` with `NewWebhookID` |
 | `Webhooks.get()` | `dict` with `Webhooks` list |
-| `Webhooks.delete(webhook_id)` | `None` |
+| `Webhooks.delete(webhook_id)` | the decoded response (`{}` when the body is empty) |
 
 Parameter names are snake_case (`reply_to`, `start_date`, `message_id`, `retrieve_count`) but
 **response keys are PascalCase** (`MessageID`, `TotalRecords`, `Events`, `Webhooks`,
@@ -91,11 +93,11 @@ Parameter names are snake_case (`reply_to`, `start_date`, `message_id`, `retriev
 
 ## Exceptions
 
-Only `SendLayer`, `SendLayerError`, and `SendLayerAPIError` are exported from the top-level
-package. Import the specific ones from the submodule:
+All seven are exported from the top-level package (1.1.0+; on 1.0.0 only `SendLayerError` and
+`SendLayerAPIError` were, and the rest needed `sendlayer.exceptions`):
 
 ```python
-from sendlayer.exceptions import (
+from sendlayer import (
     SendLayerError,                  # base
     SendLayerAPIError,
     SendLayerAuthenticationError,
@@ -106,17 +108,30 @@ from sendlayer.exceptions import (
 )
 ```
 
-`from sendlayer import SendLayerValidationError` is an `ImportError`.
+Every exception carries `message`, `status_code`, `response`, `errors` (the raw `Errors`
+entries) and a `codes` property listing SendLayer's numeric codes — so
+`if 14 in exc.codes:` works whichever subclass you caught. `status_code` is `None` for local
+validation, timeouts and connection errors. `SendLayerAPIError`'s `str()` is prefixed
+`API Error <status>: `; `exc.message` is not.
+
+HTTP mapping: 400/422 → `SendLayerValidationError`, 401 → `SendLayerAuthenticationError`,
+404 → `SendLayerNotFoundError`, 429 → `SendLayerRateLimitError`, 500 →
+`SendLayerInternalServerError`, any other status (including 502/503/504) → `SendLayerAPIError`.
+A timeout or connection failure raises plain `SendLayerError` — `requests` exceptions never
+escape the SDK.
 
 ## Client configuration
 
 ```python
-sendlayer = SendLayer(api_key)
+sendlayer = SendLayer(api_key, {
+    "timeout": 30,                   # seconds, default 30
+    "attachmentURLTimeout": 30000,   # ms
+    "requests": {"headers": {}},     # extra session options
+})
 ```
 
-The underlying client accepts `attachmentURLTimeout` and a `requests` sub-dict (`timeout`,
-`headers`), but note the key is camelCase `attachmentURLTimeout` even in Python — it matches the
-wire name, not PEP 8.
+Requests time out after **30 seconds** by default (1.0.0 had no effective timeout). Note the key
+is camelCase `attachmentURLTimeout` even in Python — it matches the wire name, not PEP 8.
 
 ## Pagination
 

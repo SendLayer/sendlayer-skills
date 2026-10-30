@@ -60,9 +60,13 @@ The from-address domain must be verified in SendLayer, or the send fails with er
 
 `--html` wins over `--html-file` if both are given; likewise `--text` over `--text-file`.
 
-**Passing both an HTML and a plain-text body does not produce a multipart email.** The underlying
-SDK transmits only the HTML and silently discards the text. Do not tell a user they have a
-plain-text fallback — they do not.
+**Pass both an HTML and a plain-text body for a plain-text fallback.** Both are sent (the CLI uses
+SDK 1.1, which transmits `HTMLContent` and `PlainContent` together):
+
+```sh
+sendlayer emails send --from you@yourdomain.com --to a@example.com --subject "Shipped" \
+  --html-file ./emails/shipped.html --text-file ./emails/shipped.txt
+```
 
 ## Headers use `=`, not `:`
 

@@ -1,6 +1,6 @@
 # PHP
 
-Composer `sendlayer/sendlayer-php` ^1.0. PHP 7.4+. Uses Guzzle 7.
+Composer `sendlayer/sendlayer-php` ^1.1. PHP 7.4+. Uses Guzzle 7 or 8.
 
 ```sh
 composer require sendlayer/sendlayer-php
@@ -58,6 +58,7 @@ try {
         to: [['email' => 'customer@example.com', 'name' => 'Ada Lovelace']],
         subject: 'Invoice #12345',
         html: '<html><body><p>Your invoice is attached.</p></body></html>',
+        text: 'Your invoice is attached.',   // plain-text fallback, sent alongside the HTML
         replyTo: 'support@yourdomain.com',
         attachments: [
             ['path' => __DIR__ . '/invoice.pdf', 'type' => 'application/pdf'],
@@ -69,7 +70,7 @@ try {
 } catch (SendLayerRateLimitException $e) {
     echo "rate limited\n";
 } catch (SendLayerValidationException $e) {
-    echo "bad request: {$e->getMessage()}\n";     // do not retry
+    echo "bad request: {$e->getMessage()}\n";     // do not retry; $e->errors has the API's Code/Message entries
 } catch (SendLayerException $e) {
     echo "send failed: {$e->getMessage()}\n";
 }
@@ -150,6 +151,28 @@ SendLayer\Exceptions\SendLayerException              (base — catch this)
 ├── SendLayerNotFoundException
 ├── SendLayerRateLimitException
 └── SendLayerInternalServerException
+```
+
+Every exception has a public `$errors` array (1.1.0+) holding the raw `Errors` entries, each with
+the API's numeric `Code` and `Message`, and `getMessage()` returns the API's own text (multiple
+messages joined with `; `). `SendLayerAPIException` also carries `$statusCode` and `$response`,
+and its message is prefixed `API Error <status>: `.
+
+`getCode()` is the HTTP status, except that a `422` raises `SendLayerValidationException` with code
+`400`. Match on the class or on the `Code` values in `$errors` instead.
+
+HTTP mapping: 400/422 → Validation, 401 → Authentication, 404 → NotFound, 429 → RateLimit,
+500 → InternalServer, any other 4xx/5xx (including 502/503/504) → `SendLayerAPIException`.
+
+```php
+try {
+    $sendlayer->Emails->send(from: 'you@yourdomain.com', to: $address, subject: 'Hi', text: 'Hello');
+} catch (SendLayerException $e) {
+    $codes = array_column($e->errors, 'Code');
+    if (in_array(14, $codes, true)) {
+        // recipient suppressed — do not retry
+    }
+}
 ```
 
 ## Laravel / Symfony

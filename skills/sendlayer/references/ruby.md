@@ -1,6 +1,6 @@
 # Ruby
 
-RubyGems `sendlayer` ≥ 1.0.0. Ruby 2.7+. Runtime dependency: `mime-types ~> 3.4`. Uses the
+RubyGems `sendlayer` ≥ 1.1.0. Ruby 2.7+. Runtime dependency: `mime-types ~> 3.4`. Uses the
 standard library for HTTP.
 
 ```sh
@@ -38,6 +38,7 @@ begin
     reply_to: 'support@yourdomain.com',
     subject: 'Invoice #12345',
     html: '<html><body><p>Your invoice is attached.</p></body></html>',
+    text: 'Your invoice is attached.',   # plain-text fallback, sent alongside the HTML
     tags: %w[invoice billing],
     headers: { 'X-Invoice-Id' => '12345' },
     attachments: [
@@ -48,9 +49,10 @@ begin
 rescue SendLayer::SendLayerRateLimitError
   warn 'rate limited — back off'
 rescue SendLayer::SendLayerValidationError => e
-  warn "bad request: #{e.message}"      # do not retry
+  warn "bad request: #{e.message} #{e.codes}"   # do not retry
 rescue SendLayer::SendLayerError => e
-  warn "send failed: #{e.message}"
+  # every error carries status_code (nil for local/network errors), response, errors, codes
+  warn "send failed: #{e.status_code} #{e.message}"
 end
 
 # ---- Query events -------------------------------------------------------
@@ -81,7 +83,7 @@ sendlayer.webhooks.delete(webhooks.first['WebhookID'].to_i)   # cast: it is a st
 
 | Call | Notes |
 |---|---|
-| `SendLayer::SendLayer.new(api_key, options = {})` | options: `:base_url`, `:timeout` (default 30s), `:attachment_url_timeout` |
+| `SendLayer::SendLayer.new(api_key, options = {})` | options: `:base_url`, `:timeout` (default 30s), `:attachment_url_timeout`, `:headers` (1.1.0+; applied before `Authorization`, so they cannot replace it) |
 | `emails.send(from:, to:, subject:, text: nil, html: nil, cc: nil, bcc: nil, reply_to: nil, attachments: nil, headers: nil, tags: nil)` | all keyword arguments |
 | `events.get(start_date: nil, end_date: nil, event: nil, message_id: nil, start_from: nil, retrieve_count: nil)` | |
 | `webhooks.create(url:, event:)` | keyword arguments |
@@ -110,8 +112,14 @@ SendLayer::SendLayerError                 (base — rescue this)
 └── SendLayer::SendLayerInternalServerError
 ```
 
-`SendLayerAPIError.new(message, status_code = nil, response = nil)` carries the HTTP status and
-raw response, which is what you want when logging a failure.
+Every error (1.1.0+) carries `status_code`, `response`, `errors` (the raw `Errors` entries) and a
+`codes` helper — `e.codes.include?(14)` works whichever subclass you rescued. `status_code` is
+`nil` for local validation, timeouts and connection failures. `SendLayerAPIError`'s message is
+prefixed `API Error <status>: `.
+
+HTTP mapping: 400/422 → Validation, 401 → Authentication, 404 → NotFound, 429 → RateLimit,
+500 → InternalServer, any other status (including 502/503/504) → `SendLayerAPIError`.
+`text: ''` or `html: ''` as the only content raises `SendLayerValidationError`.
 
 ## Rails
 
@@ -152,9 +160,9 @@ ActionMailer::Base.add_delivery_method :sendlayer, SendlayerDeliveryMethod
 
 Then `config.action_mailer.delivery_method = :sendlayer`.
 
-Be aware this loses multipart: ActionMailer happily builds a `multipart/alternative` message with
-both parts, but the SDK transmits only one body — if you pass both `html` and `text`, the text is
-discarded. Only the HTML part reaches the recipient.
+With gem 1.1.0+ both parts of ActionMailer's `multipart/alternative` message reach the
+recipient — the SDK sends `html` and `text` together. (1.0.0 sent only the HTML and discarded
+the text.)
 
 ## Sinatra webhook handler
 

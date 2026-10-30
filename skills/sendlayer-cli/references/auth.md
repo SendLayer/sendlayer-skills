@@ -22,7 +22,7 @@ sendlayer login --key sl_xxx         # non-interactive
 sendlayer login -k sl_xxx            # short form
 sendlayer login --no-validate        # store without the validating API call
 sendlayer login --profile staging    # store under a named profile
-sendlayer logout                     # remove the default profile's key
+sendlayer logout                     # remove the default profile's key (see "Profiles" below)
 sendlayer logout --profile staging   # remove a specific profile
 sendlayer whoami                     # masked key + source
 sendlayer whoami --json              # machine-readable
@@ -52,22 +52,28 @@ cat "${XDG_CONFIG_HOME:-$HOME/.config}/sendlayer/credentials.json"
 
 ## Profiles
 
-`--profile <name>` selects an account. Default is `default`.
+`--profile <name>` selects an account. Without it, a command uses the **default profile** stored
+in the credentials file:
+
+- The first profile you save becomes the default. Before anything is saved, the name is
+  `default`.
+- `sendlayer login` without `--profile` saves to the current default, replacing its key.
+- Logging out of the default profile **promotes another stored profile** to default, and the CLI
+  says so (`! Default profile is now staging; commands without --profile will use it.`).
+  Commands without `--profile` then run against that account.
+- There is no command to change the default by hand. Pass `--profile` explicitly when it matters.
 
 ```sh
-sendlayer login --profile production --key sl_prod_xxx
+sendlayer login --profile production --key sl_prod_xxx   # first save: becomes the default
 sendlayer login --profile staging --key sl_stag_xxx
 
-sendlayer emails send --profile staging --from ... --to ...
-sendlayer events list --profile production --limit 20
+sendlayer emails send --from ... --to ...                # uses production (the default)
+sendlayer events list --profile staging --limit 20
 ```
 
-There is no "current profile" state — `--profile` must be passed on each command. For a shell
-session, alias it:
-
-```sh
-alias slp='sendlayer --profile production'
-```
+`sendlayer whoami --json` reports `defaultProfile` and `availableProfiles`, and
+`sendlayer logout --json` reports the `defaultProfile` left after removal — check these in
+scripts rather than assuming which account is active.
 
 Note the profile lives on the *stored credentials* lookup only. If `SENDLAYER_API_KEY` is set in
 the environment it wins over any profile, which makes `--profile` silently ineffective. Unset the

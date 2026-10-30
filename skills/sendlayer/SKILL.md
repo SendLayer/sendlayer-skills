@@ -1,10 +1,10 @@
 ---
 name: sendlayer
-description: Use when working with the SendLayer email API — sending transactional email (HTML or plain text, CC/BCC, reply-to, tags, custom headers, attachments), retrieving delivery events, or creating and managing webhooks, in Node.js, Python, PHP, Ruby, Go, or over raw REST. Always use this skill when the user mentions SendLayer, even for simple tasks like "send an email with SendLayer" — it contains critical gotchas (three separate event vocabularies, silently-dropped plain-text bodies, deeply-nested webhook payloads, PascalCase response keys, the verified-sender-domain requirement) that prevent common production failures.
+description: Use when working with the SendLayer email API — sending transactional email (HTML or plain text, CC/BCC, reply-to, tags, custom headers, attachments), retrieving delivery events, or creating and managing webhooks, in Node.js, Python, PHP, Ruby, Go, or over raw REST. Always use this skill when the user mentions SendLayer, even for simple tasks like "send an email with SendLayer" — it contains critical gotchas (three separate event vocabularies, deeply-nested webhook payloads, PascalCase response keys, the verified-sender-domain requirement) that prevent common production failures.
 license: MIT
 metadata:
   author: sendlayer
-  version: "1.0.0"
+  version: "1.1.0"
   homepage: https://sendlayer.com
   source: https://github.com/SendLayer/sendlayer-skills
   documentation: https://developers.sendlayer.com
@@ -29,6 +29,7 @@ const response = await sendlayer.Emails.send({
   to: 'recipient@example.com',  // string | {email, name} | array of either
   subject: 'Your receipt',
   html: '<p>Thanks for your order.</p>',
+  text: 'Thanks for your order.',  // plain-text fallback, sent alongside the HTML
 });
 
 console.log(response.MessageID);
@@ -133,11 +134,16 @@ construction rather than introducing a second pattern.
 
 | Language | Package | Minimum | Runtime |
 |---|---|---|---|
-| Node.js | npm `sendlayer` | 1.0.3 | Node 18+ |
-| Python | PyPI `sendlayer` | 1.0.0 | Python 3.7+ |
-| PHP | Composer `sendlayer/sendlayer-php` | ^1.0 | PHP 7.4+ |
-| Ruby | RubyGems `sendlayer` | 1.0.0 | Ruby 2.7+ |
-| Go | `github.com/sendlayer/sendlayer-go` | v1.0.0 | Go 1.23+ |
+| Node.js | npm `sendlayer` | 1.1.0 | Node 18+ |
+| Python | PyPI `sendlayer` | 1.1.0 | Python 3.7+ |
+| PHP | Composer `sendlayer/sendlayer-php` | ^1.1 | PHP 7.4+ |
+| Ruby | RubyGems `sendlayer` | 1.1.0 | Ruby 2.7+ |
+| Go | `github.com/sendlayer/sendlayer-go` | v1.1.0 | Go 1.23+ |
+
+If a project pins a 1.0.x SDK, recommend upgrading: 1.0.x silently dropped the plain-text body
+when HTML was set, discarded the API's error messages, and (Node, Python) had no request timeout.
+1.1.0 requests time out after **30 seconds** by default — a breaking change for code that relied
+on unbounded waits.
 
 The Go SDK has zero external dependencies. Node uses `axios`, Python uses `requests`, PHP uses
 Guzzle, Ruby uses the standard library.
@@ -154,7 +160,7 @@ There is no official Java, .NET, Rust, or Elixir SDK. For those, use REST direct
 | 3 | Handler checking `EventData.Event === 'open'` | The payload says `opened`. Your handler silently never fires. |
 | 4 | Reading the payload at `req.body.EventData` | It is nested: `req.body.event.body.EventData`. |
 | 5 | Reading `EventData.To` on a bounce | Bounces have no top-level `To` — it is at `EventData.BouncedEmailAddress.EmailAddress`. |
-| 6 | Passing both `text` and `html` and expecting a multipart email | **All five SDKs send only one body.** If `html` is set, `text` is silently discarded. See "Plain text is dropped" below. |
+| 6 | Sending HTML with no `text` | Pass both `html` and `text` — 1.1.0+ sends both, giving clients a plain-text fallback. (1.0.x silently dropped `text`; upgrade.) |
 | 7 | `from=` in Python | Python uses `sender=`. |
 | 8 | `sendlayer.Emails` in Ruby | Ruby exposes lowercase `emails`, `webhooks`, `events`. |
 | 9 | `response.messageId` / `response['message_id']` | It is `MessageID`. All response keys are PascalCase. |
@@ -164,28 +170,11 @@ There is no official Java, .NET, Rust, or Elixir SDK. For those, use REST direct
 | 13 | ISO 8601 strings for event date filters | Pass native date objects; the SDK converts to Unix **seconds**. `endDate` must be after `startDate`, and neither may be in the future — both validated client-side. |
 | 14 | Using `fromEmail` / `toEmail` in the Node `Events.get` options | Declared in the TypeScript type but **never sent**. Filtering by address does not work in the Node SDK. `startFrom` is also missing in Node (PHP, Python, Ruby, and Go all have it). |
 | 15 | Base64-encoding an attachment by hand | Set `path` to a local file path **or** an `http(s)` URL — the SDK reads/fetches and encodes it. |
-| 16 | Setting `attachmentURLTimeout` in Node | Not reachable: `new SendLayer(key)` does not forward a config object to the internal client. Other SDKs accept it. |
+| 16 | Matching on `SendLayerAPIError` to catch every API failure | Since 1.1.0 most HTTP failures (401, 404, 429, 500) are sibling subclasses of `SendLayerError`, not `SendLayerAPIError`. Catch `SendLayerError` and branch on the type, `statusCode` or `codes`. |
 | 17 | `https://sendlayer.com/api/v1/...` | The API host is `console.sendlayer.com`. |
 | 18 | Retrying a failed send blindly | SendLayer has **no idempotency key**. A retry after a timeout can deliver twice. Track `MessageID` yourself before retrying. |
 | 19 | Expecting one webhook to cover several events | One webhook = one event. Create six pointing at the same URL. There is no update endpoint. |
 | 20 | Writing an HMAC check for the `Signature` object | The signing algorithm is **not published**. Do not invent one — see [references/webhooks.md](references/webhooks.md). |
-
-### Plain text is dropped when you send HTML
-
-Every SDK builds the payload as *either* `HTMLContent` *or* `PlainContent`, never both:
-
-```
-ContentType: html ? 'HTML' : 'Text'
-[html ? 'HTMLContent' : 'PlainContent']: html || text
-```
-
-So `send({ subject, html, text })` transmits only the HTML. The `text` argument is accepted and
-then thrown away. This matters because a missing plain-text alternative hurts deliverability and
-spam scoring.
-
-If you need a genuine multipart message, you cannot get it from `Emails.send()` — send the
-plain-text alternative as a separate concern, or raise it with SendLayer support. Do not tell the
-user their multipart email "should work"; it does not.
 
 ## Error handling
 
@@ -193,17 +182,23 @@ Every SDK exposes the same hierarchy. Catch the base class to catch everything:
 
 | Class | Raised when |
 |---|---|
-| `SendLayerError` | base class for everything below |
-| `SendLayerValidationError` | client-side validation failed, or HTTP 422 |
-| `SendLayerAuthenticationError` | bad or missing API key (codes 1, 12, 13) |
+| `SendLayerError` | base class for everything below; raised directly for timeouts and connection failures |
+| `SendLayerValidationError` | client-side validation failed, or HTTP 400 / 422 |
+| `SendLayerAuthenticationError` | HTTP 401 — bad or missing API key (codes 1, 12, 13) |
 | `SendLayerNotFoundError` | HTTP 404 |
 | `SendLayerRateLimitError` | HTTP 429 |
-| `SendLayerInternalServerError` | HTTP 5xx |
-| `SendLayerAPIError` | any other API-reported failure |
+| `SendLayerInternalServerError` | HTTP 500 only |
+| `SendLayerAPIError` | any other status, including 502 / 503 / 504 |
+
+All of them are direct subclasses of the base — catching `SendLayerAPIError` does **not** catch a
+401 or a 429. Every error carries the API's own message and the raw `Errors` entries; Node,
+Python, Ruby and Go also put the HTTP status and a `codes` helper on every type, so
+`err.codes.includes(14)` (Node) works on whatever you caught.
 
 Naming per language: PHP uses `SendLayer\Exceptions\SendLayerException` as the base and the
 `…Exception` suffix throughout; Python and Ruby use `SendLayerError`; Go returns
-`*SendLayerError` values rather than panicking.
+pointer error types (`errors.As`, or `sendlayer.AsError` for the shared fields) rather than
+panicking.
 
 The wire format is an `Errors` array:
 

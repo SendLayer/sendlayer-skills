@@ -65,14 +65,14 @@
     {
       "id": 6,
       "prompt": "Build an HTML email template for our receipts.",
-      "expected_output": "Table-based, 600px, inline styles, preheader, alt text on images, absolute URLs. Should mention Outlook and dark mode. Should note the SendLayer plain-text limitation rather than claiming a text fallback.",
+      "expected_output": "Table-based, 600px, inline styles, preheader, alt text on images, absolute URLs. Should mention Outlook and dark mode. Should include a plain-text alternative, passing both html and text (SendLayer SDK 1.1.0+ sends both).",
       "files": [],
       "expectations": [
         "Uses table-based layout with inline styles, not flexbox or grid",
         "Constrains width to around 600px",
         "Includes a preheader",
         "Sets alt/width/height on images",
-        "Does not claim a plain-text alternative is being sent"
+        "Includes a plain-text alternative alongside the HTML"
       ]
     },
     {
