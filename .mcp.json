@@ -4,7 +4,7 @@
       "type": "http",
       "url": "https://mcp.sendlayer.com",
       "headers": {
-        "x-sendlayer-api-key": "${SENDLAYER_API_KEY}"
+        "x-sendlayer-api-key": "${SENDLAYER_API_KEY:-}"
       }
     }
   }
