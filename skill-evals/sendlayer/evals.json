@@ -142,6 +142,30 @@
         "Recognises the 1-100 limit",
         "Uses startFrom to paginate, or explains that Node cannot and offers an alternative"
       ]
+    },
+    {
+      "id": 13,
+      "prompt": "Using the SendLayer MCP connector, check whether my email to jane@example.com arrived. I signed in with SendLayer and picked two domains.",
+      "expected_output": "Agent uses the underscore tool names (get_email_events, then get_email_timeline), loads references/mcp.md, and passes a domain argument because the sign-in connection has more than one domain, calling list_domains first if it does not know which.",
+      "files": [],
+      "expectations": [
+        "Uses get_email_events and get_email_timeline, not the deprecated get-events",
+        "Passes a domain argument, or calls list_domains to find one",
+        "Does not ask the user for an API key",
+        "References references/mcp.md"
+      ]
+    },
+    {
+      "id": 14,
+      "prompt": "Connect the SendLayer MCP server to ChatGPT. I do not want to paste an API key anywhere.",
+      "expected_output": "Agent explains adding a custom MCP server in ChatGPT with the URL https://mcp.sendlayer.com and OAuth authentication, then signing in with SendLayer and choosing domains and permissions.",
+      "files": [],
+      "expectations": [
+        "Uses the URL https://mcp.sendlayer.com",
+        "Chooses OAuth / Sign in with SendLayer, not an x-sendlayer-api-key header",
+        "Mentions choosing sender domains and permissions at sign-in",
+        "Does not tell the user to clone or npx the server"
+      ]
     }
   ]
 }

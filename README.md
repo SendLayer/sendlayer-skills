@@ -46,11 +46,17 @@ npx skills add SendLayer/sendlayer-skills -a claude-code
 
 Project skills land in `.claude/skills/`; `-g` puts them in `~/.claude/skills/`.
 
-Set your API key so the MCP server can authenticate — in `~/.claude/config.json`:
+The MCP server then connects one of two ways:
 
-```json
-{ "env": { "SENDLAYER_API_KEY": "your-key" } }
-```
+- **Sign in with SendLayer (default).** Leave `SENDLAYER_API_KEY` unset. Open `/mcp`, choose the
+  `sendlayer` server, and pick **Authenticate**. You log in at SendLayer and choose which sender
+  domains and permissions Claude Code gets.
+- **API key.** Set `SENDLAYER_API_KEY` and the plugin sends it instead. For example, in
+  `~/.claude/settings.json`:
+
+  ```json
+  { "env": { "SENDLAYER_API_KEY": "your-key" } }
+  ```
 
 </details>
 
@@ -151,22 +157,40 @@ Each skill directory is self-contained: `SKILL.md` plus `references/`.
 ## MCP server
 
 Installing this repo as a plugin configures the hosted SendLayer MCP server automatically via
-[`.mcp.json`](./.mcp.json). To add it by hand:
+[`.mcp.json`](./.mcp.json). It sends `SENDLAYER_API_KEY` when that variable is set; otherwise
+the server asks the client to sign in with SendLayer.
+
+The server takes two kinds of auth on the same URL:
+
+- **Sign in with SendLayer (OAuth).** No API key. You pick the sender domains and permissions
+  (send email, read events, manage webhooks) the client gets. Use it for Claude (claude.ai, Desktop
+  and mobile custom connectors), ChatGPT, Grok, Claude Code and Codex.
+- **API key**, in an `x-sendlayer-api-key` header. The key belongs to one sender domain. Use it for
+  clients that only pass headers, such as Cursor, Gemini CLI and Windsurf.
+
+To add it by hand:
 
 ```sh
-# Claude Code
-claude mcp add --transport http sendlayer https://mcp.sendlayer.com \
+# Claude Code, sign in (then /mcp → sendlayer → Authenticate)
+claude mcp add --scope user --transport http sendlayer https://mcp.sendlayer.com
+
+# Claude Code, API key
+claude mcp add --scope user --transport http sendlayer https://mcp.sendlayer.com \
   --header "x-sendlayer-api-key: $SENDLAYER_API_KEY"
 
-# Codex
+# Codex, sign in
 codex mcp add sendlayer --url https://mcp.sendlayer.com
+codex mcp login sendlayer
 ```
 
+For Claude and ChatGPT, add a custom connector with the URL `https://mcp.sendlayer.com` and sign in.
+Full setup per client: [developers.sendlayer.com](https://developers.sendlayer.com/integrations/ai-tools/mcp-server).
+
 <details>
-<summary>Cursor, Claude Desktop, Zed, Copilot config</summary>
+<summary>Cursor, Zed, Copilot config</summary>
 
 ```json
-// Cursor / Claude Desktop
+// Cursor
 {
   "mcpServers": {
     "sendlayer": {
@@ -190,8 +214,10 @@ codex mcp add sendlayer --url https://mcp.sendlayer.com
 
 </details>
 
-Tools: `send-email`, `get-events`, `list-webhooks`, `create-webhook`, `delete-webhook`, and
-`query-sendlayer-docs` (which needs no API key).
+Tools: `send_email`, `preview_email`, `get_email_events`, `get_email_timeline`, `list_webhooks`,
+`create_webhook`, `delete_webhook`, `list_domains` (sign-in only), and `query_sendlayer_docs`
+(which needs no credentials). The old hyphenated names still work but will be removed in the next
+server release.
 
 The server is hosted — its source repository is not currently public, so use the endpoint above
 rather than looking for a package to install.
