@@ -128,6 +128,7 @@ jobs:
 
       # Catches install channels that are documented but not actually live —
       # the reason the CLI skill carries an availability warning.
+      # ftc.gov answers 404 to automated requests, even for its home page, so it is excluded.
       - name: Check external URLs
         uses: lycheeverse/lychee-action@v2
         with:
@@ -136,5 +137,6 @@ jobs:
             --accept 200,206,400,401,403,405
             --exclude-path node_modules
             --timeout 20
+            --exclude '^https://www\.ftc\.gov/'
             './**/*.md'
           fail: true

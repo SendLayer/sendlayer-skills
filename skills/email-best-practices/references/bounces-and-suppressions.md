@@ -111,13 +111,13 @@ sendlayer webhooks create --url https://yourapp.com/webhooks/sendlayer --event b
 sendlayer webhooks create --url https://yourapp.com/webhooks/sendlayer --event complaint
 ```
 
-Handler — note the payload nesting and the past-tense event names:
+Handler — note the payload shape and the past-tense event names:
 
 ```js
 app.post('/webhooks/sendlayer', (req, res) => {
   res.sendStatus(200);   // acknowledge first; SendLayer retries slow endpoints
 
-  const data = req.body?.event?.body?.EventData;
+  const data = req.body?.EventData;   // top level: { Signature, EventData }
   if (!data) return;
 
   if (data.Event === 'bounced') {
@@ -142,8 +142,8 @@ app.post('/webhooks/sendlayer', (req, res) => {
 });
 ```
 
-Three things that bite here: the payload is at `event.body.EventData`, not `body.EventData`; the
-event name is `bounced` even though you subscribed to `bounce`; and a bounce has no `To` field.
+Three things that bite here: the payload is at `req.body.EventData`, with no outer `event` wrapper;
+the event name is `bounced` even though you subscribed to `bounce`; and a bounce has no `To` field.
 
 Make the handler **idempotent** — SendLayer retries, so the same event will arrive more than once.
 An upsert on the suppression table handles it.
@@ -207,7 +207,7 @@ arrive before you get blocked.
 ## Checklist
 
 - [ ] `bounce` and `complaint` webhooks registered
-- [ ] Handler reads `event.body.EventData` and matches past-tense names
+- [ ] Handler reads `req.body.EventData` and matches past-tense names
 - [ ] Handler is idempotent
 - [ ] Hard bounces suppressed permanently, scope `all`
 - [ ] Complaints suppressed permanently, scope `all`

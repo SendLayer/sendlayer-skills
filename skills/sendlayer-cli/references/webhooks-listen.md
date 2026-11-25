@@ -80,18 +80,21 @@ webhooks in shared handler code.
 A failed forward (your app is down, or throws) is logged as a warning and **does not stop the
 listener** — the event is not retried locally. Restart your app and trigger a new event.
 
-## The console label reads `unknown`
+## The console label
 
-The listener labels each line by looking for a **top-level** `Event` key in the payload. Real
-SendLayer payloads nest it at `event.body.EventData.Event`, so the label falls back to `unknown`:
+Each line is labelled with the event type, read from `EventData.Event` in the payload:
 
 ```
-2026-05-09T10:15:30.000Z [unknown] {"event":{"method":"POST",...
+2026-11-05T16:22:22.334Z [delivered] {"Signature":{"Timestamp":1793895741,...},"EventData":{"Event":"delivered",...
 ```
 
-This is a display bug in the CLI, not a delivery problem — **the forwarded body is complete and
-correct.** Do not chase it. To see the real event type, read the truncated JSON on the line, or log
-it from your own handler at `req.body.event.body.EventData.Event`.
+The same value goes into the forwarded `x-sendlayer-event` header. In your own handler the event
+type is at `req.body.EventData.Event`.
+
+**On CLI 0.1.0, every line reads `[unknown]`** and the forwarded header is
+`x-sendlayer-event: unknown`, because that release only looked for a top-level `Event` key. It is a
+display bug, not a delivery problem: the forwarded body is complete and correct. Upgrade to 0.1.1
+or later (`npm install -g sendlayer-cli@latest`) to fix the label.
 
 Note the console preview truncates the payload to 200 characters, so it is a liveness indicator, not
 a debugging tool. Log from your handler for real inspection.
@@ -164,6 +167,6 @@ Where installing the CLI is not an option, the equivalent by hand:
 
 1. Start a tunnel: `ngrok http 3000`.
 2. Create the webhooks against the tunnel URL with the SDK or curl.
-3. Handle POSTs in your app at `req.body.event.body.EventData`.
+3. Handle POSTs in your app at `req.body.EventData`.
 4. **Delete the webhooks when you finish** — this is the step the CLI automates, and the one people
    forget.

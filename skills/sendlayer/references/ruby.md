@@ -172,7 +172,7 @@ require 'json'
 
 post '/webhooks/sendlayer' do
   payload = JSON.parse(request.body.read) rescue {}
-  data = payload.dig('event', 'body', 'EventData')   # note the nesting
+  data = payload['EventData']   # top level: { Signature, EventData }
   halt 200 unless data
 
   # payload names are past-tense

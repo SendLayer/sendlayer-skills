@@ -1,10 +1,10 @@
 ---
 name: sendlayer
-description: Use when working with the SendLayer email API — sending transactional email (HTML or plain text, CC/BCC, reply-to, tags, custom headers, attachments), retrieving delivery events, or creating and managing webhooks, in Node.js, Python, PHP, Ruby, Go, or over raw REST. Always use this skill when the user mentions SendLayer, even for simple tasks like "send an email with SendLayer" — it contains critical gotchas (three separate event vocabularies, deeply-nested webhook payloads, PascalCase response keys, the verified-sender-domain requirement) that prevent common production failures.
+description: Use when working with the SendLayer email API — sending transactional email (HTML or plain text, CC/BCC, reply-to, tags, custom headers, attachments), retrieving delivery events, or creating and managing webhooks, in Node.js, Python, PHP, Ruby, Go, or over raw REST. Always use this skill when the user mentions SendLayer, even for simple tasks like "send an email with SendLayer" — it contains critical gotchas (three separate event vocabularies, the webhook payload shape, PascalCase response keys, the verified-sender-domain requirement) that prevent common production failures.
 license: MIT
 metadata:
   author: sendlayer
-  version: "1.2.0"
+  version: "1.2.1"
   homepage: https://sendlayer.com
   source: https://github.com/SendLayer/sendlayer-skills
   documentation: https://developers.sendlayer.com
@@ -158,7 +158,7 @@ There is no official Java, .NET, Rust, or Elixir SDK. For those, use REST direct
 | 1 | `Webhooks.create({ event: 'delivered' })` | Webhooks subscribe with `delivery`. See the vocabularies table above. |
 | 2 | `Events.get({ event: 'delivery' })` | Event history uses `delivered`. |
 | 3 | Handler checking `EventData.Event === 'open'` | The payload says `opened`. Your handler silently never fires. |
-| 4 | Reading the payload at `req.body.EventData` | It is nested: `req.body.event.body.EventData`. |
+| 4 | Reading the payload at `req.body.event.body.EventData` | The body is `{ Signature, EventData }` with no wrapper. Read `req.body.EventData`; the wrapped path returns `undefined` and the handler silently does nothing. |
 | 5 | Reading `EventData.To` on a bounce | Bounces have no top-level `To` — it is at `EventData.BouncedEmailAddress.EmailAddress`. |
 | 6 | Sending HTML with no `text` | Pass both `html` and `text` — 1.1.0+ sends both, giving clients a plain-text fallback. (1.0.x silently dropped `text`; upgrade.) |
 | 7 | `from=` in Python | Python uses `sender=`. |

@@ -216,22 +216,23 @@ import (
 )
 
 type payload struct {
-	Event struct {
-		Body struct {
-			EventData struct {
-				Event               string `json:"Event"`
-				EventType           string `json:"EventType"`
-				MessageID           string `json:"MessageID"`
-				To                  string `json:"To"`
-				Reason              string `json:"Reason"`
-				BouncedEmailAddress struct {
-					EmailAddress   string `json:"EmailAddress"`
-					Status         string `json:"Status"`
-					DiagnosticCode string `json:"DiagnosticCode"`
-				} `json:"BouncedEmailAddress"`
-			} `json:"EventData"`
-		} `json:"body"`
-	} `json:"event"`
+	Signature struct {
+		Timestamp int64  `json:"Timestamp"`
+		Token     string `json:"Token"`
+		Signature string `json:"Signature"`
+	} `json:"Signature"`
+	EventData struct {
+		Event               string `json:"Event"`
+		EventType           string `json:"EventType"`
+		MessageID           string `json:"MessageID"`
+		To                  string `json:"To"`
+		Reason              string `json:"Reason"`
+		BouncedEmailAddress struct {
+			EmailAddress   string `json:"EmailAddress"`
+			Status         string `json:"Status"`
+			DiagnosticCode string `json:"DiagnosticCode"`
+		} `json:"BouncedEmailAddress"`
+	} `json:"EventData"`
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
@@ -242,7 +243,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK) // acknowledge before slow work
 
-	d := p.Event.Body.EventData
+	d := p.EventData
 	switch d.Event { // payload names are past-tense
 	case "bounced":
 		go suppress(d.BouncedEmailAddress.EmailAddress, d.Reason)
@@ -254,5 +255,5 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-Note the outer key is lowercase `event` and `body`, while everything inside `EventData` is
-PascalCase — the struct tags above reflect that exactly.
+`Signature` and `EventData` are the only top-level keys, and every key is PascalCase. The struct
+tags above match the body SendLayer sends.

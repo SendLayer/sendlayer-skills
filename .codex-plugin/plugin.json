@@ -1,7 +1,7 @@
 {
   "name": "sendlayer",
   "description": "Send transactional email, track delivery events, and manage webhooks with SendLayer — across Node.js, Python, PHP, Ruby, Go, the CLI, and the REST API. Includes the SendLayer MCP server.",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "author": {
     "name": "SendLayer",
     "email": "support@sendlayer.com",
