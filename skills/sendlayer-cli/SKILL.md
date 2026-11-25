@@ -4,7 +4,7 @@ description: Use when working with the SendLayer command-line interface — the 
 license: MIT
 metadata:
   author: sendlayer
-  version: "1.1.0"
+  version: "1.1.1"
   homepage: https://sendlayer.com
   source: https://github.com/SendLayer/sendlayer-skills
 ---

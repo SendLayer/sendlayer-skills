@@ -121,37 +121,32 @@ So `if (body.EventData.Event === 'open')` **never matches**. Compare against `'o
 
 ## Payload shape
 
-The event data is nested four levels deep, inside a wrapper describing the HTTP request itself:
+The POST body is a JSON object with two top-level keys, `Signature` and `EventData`. There is no
+outer wrapper:
 
 ```json
 {
-  "event": {
-    "method": "POST",
-    "path": "/",
-    "query": {},
-    "client_ip": "0.0.0.0",
-    "url": "https://your-domain.com/webhook",
-    "headers": { "host": "…", "content-type": "application/json" },
-    "body": {
-      "Signature": {
-        "Timestamp": 1758100959,
-        "Token": "c0a6c82bdde01faab7e857",
-        "Signature": "3d1bf89405e4b71ed80bc240cd512aa7ed9db9dcfb17"
-      },
-      "EventData": {
-        "Event": "opened",
-        "Domain": "example.com",
-        "MessageID": "4331c06-2d1d-4387-969e-697835",
-        "To": "recipient@example.com",
-        "IPAddress": "10.30.126.18"
-      }
-    }
+  "Signature": {
+    "Timestamp": 1758100959,
+    "Token": "c0a6c82bdde01faab7e857",
+    "Signature": "3d1bf89405e4b71ed80bc240cd512aa7ed9db9dcfb17"
+  },
+  "EventData": {
+    "Event": "opened",
+    "Domain": "example.com",
+    "MessageID": "4331c06-2d1d-4387-969e-697835",
+    "To": "recipient@example.com",
+    "IPAddress": "10.30.126.18"
   }
 }
 ```
 
-**The data you want is at `event.body.EventData`.** Note the outer `event` key is lowercase while
-everything inside `body` is PascalCase.
+**The data you want is at `req.body.EventData`.** Every key is PascalCase.
+
+Some older examples, including earlier versions of this skill, show the body inside an
+`event: { method, path, client_ip, headers, body }` object. That is a request-inspector capture
+(the tool's record of the HTTP request), not what SendLayer sends. Code that reads
+`req.body.event.body.EventData` gets `undefined`, returns 200 and silently does nothing.
 
 A bounce carries more:
 
@@ -204,7 +199,7 @@ app.post('/webhooks/sendlayer', (req, res) => {
   // Acknowledge immediately — SendLayer retries on non-2xx or a slow response.
   res.sendStatus(200);
 
-  const data = req.body?.event?.body?.EventData;
+  const data = req.body?.EventData;
   if (!data) return;
 
   switch (data.Event) {

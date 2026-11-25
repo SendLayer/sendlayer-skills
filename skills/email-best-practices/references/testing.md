@@ -151,28 +151,24 @@ sendlayer webhooks listen --port 4000 \
 
 See the `sendlayer-cli` skill. Note it does not create the tunnel for you.
 
-For handler unit tests, no network is needed — post a realistic payload. Get the nesting right, or
-you will test a shape SendLayer never sends:
+For handler unit tests, no network is needed — post a realistic payload. The body is
+`{ Signature, EventData }` with no outer wrapper. Get that right, or you will test a shape
+SendLayer never sends:
 
 ```js
 const bouncePayload = {
-  event: {
-    method: 'POST',
-    body: {
-      Signature: { Timestamp: 1758100959, Token: 'tok', Signature: 'sig' },
-      EventData: {
-        Event: 'bounced',                 // past tense, not 'bounce'
-        EventType: 'failed',
-        Domain: 'example.com',
-        MessageID: '4331c06-2d1d-4387-969e-697835',
-        BouncedEmailAddress: {
-          EmailAddress: 'bad@example.com',
-          Status: 'smtp;550 5.1.1 User Unknown',
-          DiagnosticCode: '5.1.1 (bad destination mailbox address)',
-        },
-        Reason: 'smtp;550 5.1.1 User Unknown',
-      },
+  Signature: { Timestamp: 1758100959, Token: 'tok', Signature: 'sig' },
+  EventData: {
+    Event: 'bounced',                 // past tense, not 'bounce'
+    EventType: 'failed',
+    Domain: 'example.com',
+    MessageID: '4331c06-2d1d-4387-969e-697835',
+    BouncedEmailAddress: {
+      EmailAddress: 'bad@example.com',
+      Status: 'smtp;550 5.1.1 User Unknown',
+      DiagnosticCode: '5.1.1 (bad destination mailbox address)',
     },
+    Reason: 'smtp;550 5.1.1 User Unknown',
   },
 };
 

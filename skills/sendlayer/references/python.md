@@ -161,7 +161,7 @@ app = Flask(__name__)
 @app.post("/webhooks/sendlayer")
 def sendlayer_webhook():
     payload = request.get_json(silent=True) or {}
-    data = payload.get("event", {}).get("body", {}).get("EventData")   # note the nesting
+    data = payload.get("EventData")   # top level: { Signature, EventData }
     if not data:
         return "", 200
 

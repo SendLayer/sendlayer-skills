@@ -14,7 +14,7 @@ official SDKs for Node.js, Python, PHP, Ruby and Go, the CLI, and email delivera
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
 Assistants guess at SendLayer, and they guess wrong in specific, repeatable ways: there are three
-different event vocabularies, webhook payloads are nested three levels deep, `WebhookID` comes back as
+different event vocabularies, webhook handlers read the payload from the wrong place, `WebhookID` comes back as
 a string but must be passed as an integer, and Python's send parameter is `sender` while every other
 SDK calls it `from`. These skills encode all of it.
 

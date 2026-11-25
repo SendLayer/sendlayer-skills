@@ -133,7 +133,7 @@ app.use(express.json());
 app.post('/webhooks/sendlayer', (req, res) => {
   res.sendStatus(200);   // acknowledge first; SendLayer retries slow endpoints
 
-  const data = req.body?.event?.body?.EventData;   // note the nesting
+  const data = req.body?.EventData;   // top level: { Signature, EventData }
   if (!data) return;
 
   // payload names are past-tense: delivered / opened / clicked / bounced / …

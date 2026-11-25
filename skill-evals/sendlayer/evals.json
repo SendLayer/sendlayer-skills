@@ -16,10 +16,10 @@
     {
       "id": 2,
       "prompt": "Write a handler for my SendLayer webhook that suppresses addresses when they bounce.",
-      "expected_output": "Handler reads the payload at event.body.EventData, matches EventData.Event === 'bounced' (past tense), and reads the address from BouncedEmailAddress.EmailAddress rather than a top-level To field.",
+      "expected_output": "Handler reads the payload at req.body.EventData (the body is { Signature, EventData } with no wrapper), matches EventData.Event === 'bounced' (past tense), and reads the address from BouncedEmailAddress.EmailAddress rather than a top-level To field.",
       "files": [],
       "expectations": [
-        "Accesses the payload at req.body.event.body.EventData, not req.body.EventData",
+        "Accesses the payload at req.body.EventData, not req.body.event.body.EventData",
         "Compares against 'bounced', not 'bounce'",
         "Reads the address from BouncedEmailAddress.EmailAddress",
         "Does not read data.To for the bounced address",

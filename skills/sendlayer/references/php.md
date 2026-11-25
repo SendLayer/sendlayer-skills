@@ -211,7 +211,7 @@ mail-driver integration requires the unpublished transport package.
 
 ```php
 Route::post('/webhooks/sendlayer', function (Illuminate\Http\Request $request) {
-    $data = $request->input('event.body.EventData');   // note the nesting
+    $data = $request->input('EventData');   // top level: { Signature, EventData }
     if (!$data) {
         return response()->noContent();
     }
